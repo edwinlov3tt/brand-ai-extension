@@ -561,7 +561,7 @@ button {
    Assets Tab Styles
    =========================== */
 .assets-controls {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
 }
@@ -885,7 +885,7 @@ button {
    ============================================ */
 
 .colors-controls, .fonts-controls {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
 }
@@ -928,7 +928,7 @@ button {
 }
 
 .colors-grid, .fonts-list {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
 }
 
 .color-role-section, .font-role-section {

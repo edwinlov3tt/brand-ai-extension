@@ -480,14 +480,19 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 const lightness = (max + min) / 2;
                 const saturation = max === min ? 0 : (max - min) / (255 - Math.abs(max + min - 255));
 
-                // Filter out very light colors (>240) unless heavily used
-                if (lightness > 240 && data.count < 10) return false;
+                // Filter out very light colors (>235) unless heavily used
+                if (lightness > 235 && data.count < 20) return false;
 
-                // Filter out very dark colors (<20) unless heavily used
-                if (lightness < 20 && data.count < 10) return false;
+                // Filter out very dark colors (<30) unless heavily used and high saturation
+                if (lightness < 30 && (data.count < 20 || saturation < 0.15)) return false;
 
-                // Filter out low saturation grays (<0.1) unless heavily used
-                if (saturation < 0.1 && lightness > 30 && lightness < 220 && data.count < 15) return false;
+                // Filter out low saturation grays (<0.15) unless heavily used
+                if (saturation < 0.15 && lightness > 25 && lightness < 230 && data.count < 25) return false;
+
+                // Require minimum saturation for brand colors (0.2) unless in header/hero/cta
+                if (saturation < 0.2 && !data.usedIn.has('header') && !data.usedIn.has('hero') && !data.usedIn.has('cta')) {
+                    return false;
+                }
 
                 return true;
             });
