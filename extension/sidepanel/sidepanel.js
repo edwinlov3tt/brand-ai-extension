@@ -27,7 +27,9 @@ class SidePanelController {
             lucide.createIcons();
         }
 
-        // Initialize AssetsTab component
+        // Initialize tab components
+        this.colorsTab = new ColorsTab();
+        this.fontsTab = new FontsTab();
         this.assetsTab = new AssetsTab();
 
         // Setup tab navigation
@@ -42,11 +44,39 @@ class SidePanelController {
         // Setup message listener
         this.setupMessageListener();
 
+        // Setup custom event listeners from tab components
+        this.setupCustomEventListeners();
+
         // Load saved state
         this.loadState();
 
         // Request initial extraction from current tab
         this.requestInitialExtraction();
+    }
+
+    /**
+     * Setup custom event listeners from tab components
+     */
+    setupCustomEventListeners() {
+        // Color picker activation
+        window.addEventListener('activateColorPicker', () => {
+            this.activateInspector('color');
+        });
+
+        // Font picker activation
+        window.addEventListener('activateFontPicker', () => {
+            this.activateInspector('font');
+        });
+
+        // Delete color
+        window.addEventListener('deleteColor', (e) => {
+            this.deleteColor(e.detail);
+        });
+
+        // Delete font
+        window.addEventListener('deleteFont', (e) => {
+            this.deleteFont(e.detail);
+        });
     }
 
     /**
@@ -330,8 +360,21 @@ class SidePanelController {
         if (!exists) {
             this.brandData.colors.push(color);
             this.updateColorsTab();
+            this.updateOverviewTab();
             this.showNotification(`Color ${color.hex} added`, 'success');
         }
+    }
+
+    /**
+     * Delete color from brand data
+     */
+    deleteColor(color) {
+        this.brandData.colors = this.brandData.colors.filter(c => c.hex !== color.hex);
+        this.updateColorsTab();
+        this.updateOverviewTab();
+        this.saveState();
+        this.updateActionButtons();
+        this.showNotification(`Color ${color.hex} removed`, 'success');
     }
 
     /**
@@ -343,8 +386,21 @@ class SidePanelController {
         if (!exists) {
             this.brandData.fonts.push(font);
             this.updateFontsTab();
+            this.updateOverviewTab();
             this.showNotification(`Font ${font.family} added`, 'success');
         }
+    }
+
+    /**
+     * Delete font from brand data
+     */
+    deleteFont(font) {
+        this.brandData.fonts = this.brandData.fonts.filter(f => f.family !== font.family);
+        this.updateFontsTab();
+        this.updateOverviewTab();
+        this.saveState();
+        this.updateActionButtons();
+        this.showNotification(`Font ${font.family} removed`, 'success');
     }
 
     /**
@@ -429,16 +485,18 @@ class SidePanelController {
      * Update Colors tab
      */
     updateColorsTab() {
-        // TODO: Implement colors tab UI in Phase 4
-        console.log('Colors tab update pending Phase 4');
+        if (this.colorsTab) {
+            this.colorsTab.updateColors(this.brandData.colors);
+        }
     }
 
     /**
      * Update Fonts tab
      */
     updateFontsTab() {
-        // TODO: Implement fonts tab UI in Phase 4
-        console.log('Fonts tab update pending Phase 4');
+        if (this.fontsTab) {
+            this.fontsTab.updateFonts(this.brandData.fonts);
+        }
     }
 
     /**
