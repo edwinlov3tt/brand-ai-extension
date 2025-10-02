@@ -390,12 +390,19 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
             const viewportHeight = window.innerHeight;
 
             elements.forEach(el => {
+                // Skip extension's own UI elements
+                if (el.id?.startsWith('__brand-inspector-')) return;
+                if (el.closest('[id^="__brand-inspector-"]')) return;
+
                 const style = window.getComputedStyle(el);
                 const rect = el.getBoundingClientRect();
 
                 // Skip invisible elements
                 if (rect.width === 0 || rect.height === 0) return;
                 if (style.display === 'none' || style.visibility === 'hidden') return;
+
+                // Skip elements with opacity 0
+                if (parseFloat(style.opacity) === 0) return;
 
                 const area = rect.width * rect.height;
                 const viewportArea = window.innerWidth * viewportHeight;
@@ -461,11 +468,27 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 }
             });
 
-            // Filter out pure white and black (unless heavily used)
+            // Filter out near-white, near-black, and grays (unless heavily used)
             const filteredColors = Array.from(colorData.entries()).filter(([hex, data]) => {
-                if ((hex === '#ffffff' || hex === '#000000') && data.count < 10) {
-                    return false;
-                }
+                // Parse hex to check lightness
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+
+                const max = Math.max(r, g, b);
+                const min = Math.min(r, g, b);
+                const lightness = (max + min) / 2;
+                const saturation = max === min ? 0 : (max - min) / (255 - Math.abs(max + min - 255));
+
+                // Filter out very light colors (>240) unless heavily used
+                if (lightness > 240 && data.count < 10) return false;
+
+                // Filter out very dark colors (<20) unless heavily used
+                if (lightness < 20 && data.count < 10) return false;
+
+                // Filter out low saturation grays (<0.1) unless heavily used
+                if (saturation < 0.1 && lightness > 30 && lightness < 220 && data.count < 15) return false;
+
                 return true;
             });
 
@@ -509,12 +532,17 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 const elements = document.querySelectorAll(selector);
 
                 elements.forEach(el => {
+                    // Skip extension's own UI elements
+                    if (el.id?.startsWith('__brand-inspector-')) return;
+                    if (el.closest('[id^="__brand-inspector-"]')) return;
+
                     const style = window.getComputedStyle(el);
                     const rect = el.getBoundingClientRect();
 
                     // Skip invisible elements
                     if (rect.width === 0 || rect.height === 0) return;
                     if (style.display === 'none' || style.visibility === 'hidden') return;
+                    if (parseFloat(style.opacity) === 0) return;
 
                     // Get font family (first in stack)
                     const fontFamily = style.fontFamily.split(',')[0].replace(/["']/g, '').trim();
