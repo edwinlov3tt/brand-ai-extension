@@ -293,6 +293,47 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                     },
                     category: 'uncategorized'
                 };
+            } else if (mode === 'image') {
+                // Extract image asset data
+                const assetExtractor = new AssetExtractor();
+                const rect = element.getBoundingClientRect();
+
+                // Determine asset type and URL
+                let url = '';
+                let type = 'image';
+
+                if (element.tagName === 'IMG') {
+                    url = element.src;
+                    type = 'image';
+                } else if (element.tagName === 'SVG') {
+                    const svgData = new XMLSerializer().serializeToString(element);
+                    url = 'data:image/svg+xml;base64,' + btoa(svgData);
+                    type = 'svg';
+                } else {
+                    // Background image
+                    const bgImage = style.backgroundImage;
+                    const urlMatch = bgImage.match(/url\(['"]?(.+?)['"]?\)/);
+                    if (urlMatch) {
+                        url = new URL(urlMatch[1], window.location.href).href;
+                        type = 'background';
+                    }
+                }
+
+                return {
+                    type: type,
+                    format: assetExtractor.getImageFormat(url),
+                    url: url,
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height),
+                    naturalWidth: element.naturalWidth || Math.round(rect.width),
+                    naturalHeight: element.naturalHeight || Math.round(rect.height),
+                    alt: element.alt || '',
+                    fileName: assetExtractor.getFileName(url),
+                    fileSize: null,
+                    isLogo: assetExtractor.isLikelyLogo(element, rect),
+                    isFavicon: false,
+                    element: element.tagName.toLowerCase()
+                };
             }
 
             return {};
@@ -304,12 +345,14 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
         async extractBrandData() {
             console.log('Extracting brand data from page...');
 
-            // TODO: Implement full extraction in Phase 3
-            // For now, return basic data
+            // Extract assets using AssetExtractor
+            const assetExtractor = new AssetExtractor();
+            const assets = await assetExtractor.extractAssets(document);
 
             const data = {
                 colors: this.extractColors(),
                 fonts: this.extractFonts(),
+                assets: assets, // Add extracted assets
                 metadata: {
                     url: window.location.href,
                     title: document.title,

@@ -27,6 +27,9 @@ class SidePanelController {
             lucide.createIcons();
         }
 
+        // Initialize AssetsTab component
+        this.assetsTab = new AssetsTab();
+
         // Setup tab navigation
         this.setupTabNavigation();
 
@@ -98,6 +101,7 @@ class SidePanelController {
         const pickColorBtn = document.getElementById('pick-color-btn');
         const pickFontBtn = document.getElementById('pick-font-btn');
         const addTextBtn = document.getElementById('add-text-btn');
+        const pickImageBtn = document.getElementById('pick-image-btn');
 
         pickColorBtn.addEventListener('click', () => {
             this.activateInspector('color');
@@ -109,6 +113,10 @@ class SidePanelController {
 
         addTextBtn.addEventListener('click', () => {
             this.activateInspector('text');
+        });
+
+        pickImageBtn.addEventListener('click', () => {
+            this.activateInspector('image');
         });
     }
 
@@ -141,8 +149,14 @@ class SidePanelController {
             btn.classList.remove('active');
         });
 
-        const activeBtn = document.getElementById(`pick-${mode}-btn`) ||
-                         document.getElementById('add-text-btn');
+        let activeBtnId = '';
+        if (mode === 'text') {
+            activeBtnId = 'add-text-btn';
+        } else {
+            activeBtnId = `pick-${mode}-btn`;
+        }
+
+        const activeBtn = document.getElementById(activeBtnId);
         if (activeBtn) {
             activeBtn.classList.add('active');
         }
@@ -284,15 +298,19 @@ class SidePanelController {
 
         switch (mode) {
             case 'color':
-                this.addColor(element.color);
+                this.addColor(element);
                 break;
 
             case 'font':
-                this.addFont(element.font);
+                this.addFont(element);
                 break;
 
             case 'text':
-                this.addTextSnippet(element.text);
+                this.addTextSnippet(element);
+                break;
+
+            case 'image':
+                this.addAsset(element);
                 break;
         }
 
@@ -336,6 +354,22 @@ class SidePanelController {
         this.brandData.textSnippets.push(text);
         this.updateBrandProfileTab();
         this.showNotification('Text snippet captured', 'success');
+    }
+
+    /**
+     * Add asset to brand data
+     */
+    addAsset(asset) {
+        // Check for duplicates by URL
+        const exists = this.brandData.assets.some(a => a.url === asset.url);
+        if (!exists) {
+            this.brandData.assets.push(asset);
+            this.updateAssetsTab();
+            this.showNotification(`Asset ${asset.fileName} added`, 'success');
+
+            // Switch to assets tab to show the new asset
+            this.switchTab('assets');
+        }
     }
 
     /**
@@ -411,8 +445,9 @@ class SidePanelController {
      * Update Assets tab
      */
     updateAssetsTab() {
-        // TODO: Implement assets tab UI in Phase 4
-        console.log('Assets tab update pending Phase 4');
+        if (this.assetsTab) {
+            this.assetsTab.updateAssets(this.brandData.assets);
+        }
     }
 
     /**
