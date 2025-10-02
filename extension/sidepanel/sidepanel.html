@@ -25,49 +25,29 @@
         </div>
     </header>
 
-    <!-- Tab Navigation -->
+    <!-- Main Navigation (formerly Inspector Controls) -->
     <nav class="tab-navigation">
-        <button class="tab-button active" data-tab="overview">
+        <button class="tab-button active" data-tab="overview" title="Overview">
             <i data-lucide="eye" class="tab-icon"></i>
             <span class="tab-label">Overview</span>
         </button>
-        <button class="tab-button" data-tab="colors">
+        <button class="tab-button" data-tab="colors" id="pick-color-btn" title="Colors (Alt+Shift+C)">
             <i data-lucide="palette" class="tab-icon"></i>
             <span class="tab-label">Colors</span>
         </button>
-        <button class="tab-button" data-tab="fonts">
+        <button class="tab-button" data-tab="fonts" id="pick-font-btn" title="Fonts (Alt+Shift+F)">
             <i data-lucide="type" class="tab-icon"></i>
             <span class="tab-label">Fonts</span>
         </button>
-        <button class="tab-button" data-tab="assets">
+        <button class="tab-button" data-tab="assets" id="pick-image-btn" title="Assets (Alt+Shift+I)">
             <i data-lucide="image" class="tab-icon"></i>
             <span class="tab-label">Assets</span>
         </button>
-        <button class="tab-button" data-tab="profile">
+        <button class="tab-button" data-tab="profile" title="Profile">
             <i data-lucide="user" class="tab-icon"></i>
             <span class="tab-label">Profile</span>
         </button>
     </nav>
-
-    <!-- Inspector Controls -->
-    <div class="inspector-controls">
-        <button class="control-btn" id="pick-color-btn" title="Pick Color (Alt+Shift+C)">
-            <i data-lucide="droplet" class="btn-icon"></i>
-            <span class="btn-label">Pick Color</span>
-        </button>
-        <button class="control-btn" id="pick-font-btn" title="Pick Font (Alt+Shift+F)">
-            <i data-lucide="case-sensitive" class="btn-icon"></i>
-            <span class="btn-label">Pick Font</span>
-        </button>
-        <button class="control-btn" id="add-text-btn" title="Capture Text (Alt+Shift+T)">
-            <i data-lucide="file-text" class="btn-icon"></i>
-            <span class="btn-label">Add Text</span>
-        </button>
-        <button class="control-btn" id="pick-image-btn" title="Pick Image (Alt+Shift+I)">
-            <i data-lucide="image" class="btn-icon"></i>
-            <span class="btn-label">Pick Image</span>
-        </button>
-    </div>
 
     <!-- Main Content Area -->
     <main class="tab-content-wrapper">

@@ -32,10 +32,16 @@ class FontsTab {
         controls.innerHTML = `
             <div class="fonts-header">
                 <h3 class="fonts-count">0 fonts</h3>
-                <button class="add-font-btn" title="Pick font from page">
-                    <i data-lucide="plus" class="icon-sm"></i>
-                    Add Font
-                </button>
+                <div class="fonts-actions">
+                    <button class="add-text-btn" id="add-text-btn" title="Capture Text (Alt+Shift+T)">
+                        <i data-lucide="file-text" class="icon-sm"></i>
+                        Add Text
+                    </button>
+                    <button class="add-font-btn" title="Pick font from page">
+                        <i data-lucide="plus" class="icon-sm"></i>
+                        Add Font
+                    </button>
+                </div>
             </div>
         `;
 
@@ -51,8 +57,20 @@ class FontsTab {
             this.openFontPicker();
         });
 
+        controls.querySelector('.add-text-btn').addEventListener('click', () => {
+            this.openTextCapture();
+        });
+
         // Initialize icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    /**
+     * Open text capture mode
+     */
+    openTextCapture() {
+        // Dispatch event to activate inspector in text mode
+        window.dispatchEvent(new CustomEvent('activateTextCapture'));
     }
 
     /**

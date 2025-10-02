@@ -104,6 +104,11 @@ class SidePanelController {
             this.activateInspector('font');
         });
 
+        // Text capture activation
+        window.addEventListener('activateTextCapture', () => {
+            this.activateInspector('text');
+        });
+
         // Delete color
         window.addEventListener('deleteColor', (e) => {
             this.deleteColor(e.detail);
@@ -161,28 +166,35 @@ class SidePanelController {
     }
 
     /**
-     * Setup inspector control buttons
+     * Setup inspector control buttons (now combined with tab navigation)
      */
     setupInspectorControls() {
         const pickColorBtn = document.getElementById('pick-color-btn');
         const pickFontBtn = document.getElementById('pick-font-btn');
-        const addTextBtn = document.getElementById('add-text-btn');
         const pickImageBtn = document.getElementById('pick-image-btn');
 
-        pickColorBtn.addEventListener('click', () => {
-            this.activateInspector('color');
+        // Colors tab - activate color picker when clicking
+        pickColorBtn.addEventListener('click', (e) => {
+            // Check if already on colors tab
+            if (pickColorBtn.classList.contains('active')) {
+                this.activateInspector('color');
+            }
         });
 
-        pickFontBtn.addEventListener('click', () => {
-            this.activateInspector('font');
+        // Fonts tab - activate font picker when clicking
+        pickFontBtn.addEventListener('click', (e) => {
+            // Check if already on fonts tab
+            if (pickFontBtn.classList.contains('active')) {
+                this.activateInspector('font');
+            }
         });
 
-        addTextBtn.addEventListener('click', () => {
-            this.activateInspector('text');
-        });
-
-        pickImageBtn.addEventListener('click', () => {
-            this.activateInspector('image');
+        // Assets tab - activate image picker when clicking
+        pickImageBtn.addEventListener('click', (e) => {
+            // Check if already on assets tab
+            if (pickImageBtn.classList.contains('active')) {
+                this.activateInspector('image');
+            }
         });
     }
 
