@@ -370,56 +370,214 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
         }
 
         /**
-         * Extract colors from page (basic implementation)
+         * Extract colors from page with weighting system
          */
         extractColors() {
-            const colors = new Set();
+            const colorData = new Map(); // hex -> { rgb, weight, usedIn, elements }
+
+            // Role weights based on BRAND_EXTRACTION_V2.md
+            const roleWeights = {
+                header: 5,
+                hero: 4,
+                cta: 4,
+                main: 0.8,
+                footer: 0.5,
+                small: 0.3,
+                background: 0.2
+            };
+
             const elements = document.querySelectorAll('*');
+            const viewportHeight = window.innerHeight;
 
-            // Sample first 100 elements for performance
-            const sample = Array.from(elements).slice(0, 100);
-
-            sample.forEach(el => {
+            elements.forEach(el => {
                 const style = window.getComputedStyle(el);
-                const bgColor = style.backgroundColor;
-                const textColor = style.color;
+                const rect = el.getBoundingClientRect();
 
-                if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-                    colors.add(bgColor);
+                // Skip invisible elements
+                if (rect.width === 0 || rect.height === 0) return;
+                if (style.display === 'none' || style.visibility === 'hidden') return;
+
+                const area = rect.width * rect.height;
+                const viewportArea = window.innerWidth * viewportHeight;
+
+                // Determine element role
+                let role = 'main';
+                const tagName = el.tagName.toLowerCase();
+
+                if (tagName === 'header' || el.closest('header')) {
+                    role = 'header';
+                } else if (el.classList.contains('hero') || rect.top < 100 && area > viewportArea * 0.3) {
+                    role = 'hero';
+                } else if (tagName === 'button' || el.classList.contains('btn') || el.classList.contains('cta')) {
+                    role = 'cta';
+                } else if (tagName === 'footer' || el.closest('footer')) {
+                    role = 'footer';
+                } else if (area > viewportArea * 0.5) {
+                    role = 'background'; // Large elements are backgrounds
+                } else if (parseInt(style.fontSize) < 12) {
+                    role = 'small';
                 }
-                if (textColor) {
-                    colors.add(textColor);
+
+                // Extract background color
+                const bgColor = style.backgroundColor;
+                if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                    const hex = this.rgbToHex(bgColor);
+                    const weight = area * roleWeights[role];
+
+                    if (!colorData.has(hex)) {
+                        colorData.set(hex, {
+                            rgb: bgColor,
+                            weight: 0,
+                            usedIn: new Set(),
+                            count: 0
+                        });
+                    }
+
+                    const data = colorData.get(hex);
+                    data.weight += weight;
+                    data.usedIn.add(role);
+                    data.count += 1;
+                }
+
+                // Extract text color
+                const textColor = style.color;
+                if (textColor && textColor !== 'rgba(0, 0, 0, 0)') {
+                    const hex = this.rgbToHex(textColor);
+                    const weight = area * roleWeights[role] * 0.5; // Text colors weighted less
+
+                    if (!colorData.has(hex)) {
+                        colorData.set(hex, {
+                            rgb: textColor,
+                            weight: 0,
+                            usedIn: new Set(),
+                            count: 0
+                        });
+                    }
+
+                    const data = colorData.get(hex);
+                    data.weight += weight;
+                    data.usedIn.add(role);
+                    data.count += 1;
                 }
             });
 
-            // Convert to array and limit to 5 colors
-            return Array.from(colors).slice(0, 5).map(color => ({
-                hex: this.rgbToHex(color),
-                rgb: color,
-                role: 'detected'
-            }));
+            // Filter out pure white and black (unless heavily used)
+            const filteredColors = Array.from(colorData.entries()).filter(([hex, data]) => {
+                if ((hex === '#ffffff' || hex === '#000000') && data.count < 10) {
+                    return false;
+                }
+                return true;
+            });
+
+            // Sort by weight and take top 5
+            const sortedColors = filteredColors
+                .sort((a, b) => b[1].weight - a[1].weight)
+                .slice(0, 5);
+
+            // Assign roles based on weight ranking
+            return sortedColors.map(([hex, data], index) => {
+                let role = 'detected';
+                if (index === 0) role = 'primary';
+                else if (index === 1) role = 'secondary';
+                else if (data.usedIn.has('cta')) role = 'accent';
+
+                return {
+                    hex: hex,
+                    rgb: data.rgb,
+                    role: role,
+                    frequency: data.count,
+                    usedIn: Array.from(data.usedIn)
+                };
+            });
         }
 
         /**
-         * Extract fonts from page (basic implementation)
+         * Extract fonts from page with hierarchy detection
          */
         extractFonts() {
-            const fonts = new Set();
-            const elements = document.querySelectorAll('h1, h2, h3, p');
+            const fontData = new Map(); // family -> { weights, sizes, usedIn, coverage, count }
 
-            // Sample first 20 text elements
-            const sample = Array.from(elements).slice(0, 20);
+            // Define font role selectors
+            const selectors = {
+                display: 'h1, h2, .hero, .headline, [class*="display"], [class*="hero"]',
+                heading: 'h3, h4, h5, h6, [class*="heading"], [class*="title"]',
+                body: 'p, div, span, li, td, a'
+            };
 
-            sample.forEach(el => {
-                const style = window.getComputedStyle(el);
-                const fontFamily = style.fontFamily.split(',')[0].replace(/["']/g, '');
-                fonts.add(fontFamily);
+            // Extract fonts by role
+            Object.entries(selectors).forEach(([role, selector]) => {
+                const elements = document.querySelectorAll(selector);
+
+                elements.forEach(el => {
+                    const style = window.getComputedStyle(el);
+                    const rect = el.getBoundingClientRect();
+
+                    // Skip invisible elements
+                    if (rect.width === 0 || rect.height === 0) return;
+                    if (style.display === 'none' || style.visibility === 'hidden') return;
+
+                    // Get font family (first in stack)
+                    const fontFamily = style.fontFamily.split(',')[0].replace(/["']/g, '').trim();
+
+                    // Skip generic fonts
+                    const genericFonts = ['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui'];
+                    if (genericFonts.includes(fontFamily.toLowerCase())) return;
+
+                    const fontSize = parseInt(style.fontSize);
+                    const fontWeight = style.fontWeight;
+                    const area = rect.width * rect.height;
+
+                    if (!fontData.has(fontFamily)) {
+                        fontData.set(fontFamily, {
+                            weights: new Set(),
+                            sizes: [],
+                            usedIn: new Set(),
+                            coverage: 0,
+                            count: 0,
+                            avgSize: 0
+                        });
+                    }
+
+                    const data = fontData.get(fontFamily);
+                    data.weights.add(fontWeight);
+                    data.sizes.push(fontSize);
+                    data.usedIn.add(role);
+                    data.coverage += area;
+                    data.count += 1;
+                });
             });
 
-            return Array.from(fonts).map(font => ({
-                family: font,
-                role: 'detected'
-            }));
+            // Calculate average sizes and assign primary roles
+            const fonts = Array.from(fontData.entries()).map(([family, data]) => {
+                const avgSize = data.sizes.reduce((a, b) => a + b, 0) / data.sizes.length;
+
+                // Determine primary role based on usage and size
+                let primaryRole = 'detected';
+                if (data.usedIn.has('display') || avgSize > 24) {
+                    primaryRole = 'display';
+                } else if (data.usedIn.has('heading') || avgSize > 16) {
+                    primaryRole = 'heading';
+                } else if (data.usedIn.has('body')) {
+                    primaryRole = 'body';
+                }
+
+                return {
+                    family: family,
+                    role: primaryRole,
+                    weights: Array.from(data.weights),
+                    size: Math.round(avgSize) + 'px',
+                    weight: data.weights.values().next().value,
+                    usedIn: Array.from(data.usedIn),
+                    coverage: data.coverage,
+                    count: data.count
+                };
+            });
+
+            // Sort by coverage (most used first)
+            fonts.sort((a, b) => b.coverage - a.coverage);
+
+            // Return top 5 fonts
+            return fonts.slice(0, 5);
         }
 
         /**

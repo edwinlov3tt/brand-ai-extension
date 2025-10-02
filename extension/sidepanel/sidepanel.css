@@ -944,16 +944,17 @@ button {
 }
 
 .color-card {
-    background: white;
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-md);
+    border-radius: var(--radius-md);
     overflow: hidden;
     transition: all var(--transition-fast);
 }
 
 .color-card:hover {
     border-color: var(--primary-color);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
 }
 
 .color-swatch-large {
@@ -1017,9 +1018,9 @@ button {
 }
 
 .font-card {
-    background: white;
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-md);
+    border-radius: var(--radius-md);
     padding: var(--spacing-md);
     transition: all var(--transition-fast);
     display: flex;
@@ -1029,7 +1030,8 @@ button {
 
 .font-card:hover {
     border-color: var(--primary-color);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
 }
 
 .font-preview {
