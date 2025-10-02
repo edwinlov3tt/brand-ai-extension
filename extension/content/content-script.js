@@ -307,7 +307,7 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                     type = 'image';
                 } else if (element.tagName === 'SVG') {
                     const svgData = new XMLSerializer().serializeToString(element);
-                    url = 'data:image/svg+xml;base64,' + btoa(svgData);
+                    url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
                     type = 'svg';
                 } else {
                     // Background image

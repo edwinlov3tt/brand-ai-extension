@@ -216,11 +216,25 @@ class AssetsTab {
                     <span class="asset-dimensions">${asset.width}×${asset.height} px</span>
                 </div>
             </div>
+            <button class="asset-download-btn" title="Download asset">
+                <i data-lucide="download" class="icon-sm"></i>
+            </button>
         `;
 
-        // Click to show details
-        card.addEventListener('click', () => {
-            this.showAssetDetails(asset);
+        // Click card to show details
+        const cardBody = card.querySelector('.asset-thumbnail, .asset-info');
+        card.addEventListener('click', (e) => {
+            // Don't open modal if download button was clicked
+            if (!e.target.closest('.asset-download-btn')) {
+                this.showAssetDetails(asset);
+            }
+        });
+
+        // Download button
+        const downloadBtn = card.querySelector('.asset-download-btn');
+        downloadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.downloadAsset(asset);
         });
 
         return card;
@@ -279,12 +293,18 @@ class AssetsTab {
     }
 
     /**
-     * Download selected asset
+     * Download selected asset (from modal)
      */
     async downloadSelectedAsset() {
         if (!this.selectedAsset) return;
+        await this.downloadAsset(this.selectedAsset);
+    }
 
-        const asset = this.selectedAsset;
+    /**
+     * Download asset (works from card or modal)
+     */
+    async downloadAsset(asset) {
+        if (!asset) return;
 
         try {
             // For data URLs (SVGs), we can download directly

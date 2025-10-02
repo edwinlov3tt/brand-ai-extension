@@ -33,8 +33,20 @@ class AssetExtractor {
         const favicons = await this.extractFavicons(page);
         assets.push(...favicons);
 
+        // Filter out invalid assets (no URL, undefined fileName, etc.)
+        const validAssets = assets.filter(asset => {
+            return asset.url &&
+                   asset.url !== 'undefined' &&
+                   asset.url !== 'null' &&
+                   !asset.url.includes('undefined') &&
+                   asset.fileName &&
+                   asset.fileName !== 'undefined' &&
+                   asset.width > 0 &&
+                   asset.height > 0;
+        });
+
         // Deduplicate by URL
-        const uniqueAssets = this.deduplicateAssets(assets);
+        const uniqueAssets = this.deduplicateAssets(validAssets);
 
         // Sort by size (largest first)
         uniqueAssets.sort((a, b) => (b.width * b.height) - (a.width * a.height));
@@ -112,9 +124,11 @@ class AssetExtractor {
 
                 // Convert SVG to data URL
                 const svgData = new XMLSerializer().serializeToString(svg);
-                const dataUrl = 'data:image/svg+xml;base64,' + btoa(svgData);
 
-                // Get descriptive name from ID, class, or aria-label
+                // Use UTF-8 encoding for SVG data URL (handles special characters better)
+                const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
+
+                // Get original file name (keep long names)
                 let fileName = this.getSVGName(svg);
 
                 const asset = {

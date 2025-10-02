@@ -622,6 +622,7 @@ button {
 
 /* Asset Card */
 .asset-card {
+    position: relative;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -634,6 +635,39 @@ button {
     border-color: var(--primary-color);
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
+}
+
+.asset-card:hover .asset-download-btn {
+    opacity: 1;
+}
+
+.asset-download-btn {
+    position: absolute;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    color: white;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: all var(--transition-fast);
+    z-index: 10;
+}
+
+.asset-download-btn:hover {
+    background: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.asset-download-btn .icon-sm {
+    width: 16px;
+    height: 16px;
 }
 
 .asset-thumbnail {
