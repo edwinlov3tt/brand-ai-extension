@@ -41,6 +41,9 @@ class SidePanelController {
         // Setup action buttons
         this.setupActionButtons();
 
+        // Setup reanalyze button
+        this.setupReanalyzeButton();
+
         // Setup message listener
         this.setupMessageListener();
 
@@ -50,8 +53,41 @@ class SidePanelController {
         // Load saved state
         this.loadState();
 
+        // Listen for tab updates (URL changes)
+        this.setupTabUpdateListener();
+
         // Request initial extraction from current tab
         this.requestInitialExtraction();
+    }
+
+    /**
+     * Setup listener for tab URL changes
+     */
+    setupTabUpdateListener() {
+        // Listen for tab updates
+        chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+            // Check if URL changed and it's the active tab
+            if (changeInfo.url) {
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    if (tabs[0] && tabs[0].id === tabId) {
+                        console.log('Tab URL changed, clearing old data');
+                        this.reanalyzePage();
+                    }
+                });
+            }
+        });
+
+        // Listen for tab activation (switching between tabs)
+        chrome.tabs.onActivated.addListener(async (activeInfo) => {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab) {
+                // Check if URL is different from stored metadata
+                if (this.brandData.metadata.url && this.brandData.metadata.url !== tab.url) {
+                    console.log('Switched to different URL, clearing old data');
+                    this.reanalyzePage();
+                }
+            }
+        });
     }
 
     /**
@@ -209,6 +245,43 @@ class SidePanelController {
 
         // Enable buttons if we have data
         this.updateActionButtons();
+    }
+
+    /**
+     * Setup reanalyze button
+     */
+    setupReanalyzeButton() {
+        const reanalyzeBtn = document.getElementById('reanalyze-btn');
+
+        reanalyzeBtn.addEventListener('click', async () => {
+            await this.reanalyzePage();
+        });
+    }
+
+    /**
+     * Reanalyze current page
+     */
+    async reanalyzePage() {
+        console.log('Reanalyzing current page...');
+
+        // Clear existing data
+        this.brandData = {
+            colors: [],
+            fonts: [],
+            assets: [],
+            textSnippets: [],
+            metadata: {}
+        };
+
+        // Update all tabs to show empty state
+        this.updateOverviewTab();
+        this.updateColorsTab();
+        this.updateFontsTab();
+        this.updateAssetsTab();
+        this.updateActionButtons();
+
+        // Request fresh extraction
+        await this.requestInitialExtraction();
     }
 
     /**
