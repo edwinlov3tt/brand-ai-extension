@@ -1,0 +1,82 @@
+{
+  "manifest_version": 3,
+  "name": "Brand Inspector",
+  "version": "1.0.0",
+  "description": "Extract and analyze brand assets (colors, fonts, logos) from any website. Sync to your web app for ad creation.",
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/content-script.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open Brand Inspector",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "commands": {
+    "activate-color-picker": {
+      "suggested_key": {
+        "default": "Alt+Shift+C",
+        "mac": "Alt+Shift+C"
+      },
+      "description": "Activate color picker"
+    },
+    "activate-font-picker": {
+      "suggested_key": {
+        "default": "Alt+Shift+F",
+        "mac": "Alt+Shift+F"
+      },
+      "description": "Activate font picker"
+    },
+    "activate-text-capture": {
+      "suggested_key": {
+        "default": "Alt+Shift+T",
+        "mac": "Alt+Shift+T"
+      },
+      "description": "Activate text capture"
+    },
+    "activate-image-picker": {
+      "suggested_key": {
+        "default": "Alt+Shift+I",
+        "mac": "Alt+Shift+I"
+      },
+      "description": "Activate image picker"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/inspector.js",
+        "content/extractor.js",
+        "content/content.css"
+      ],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
+}

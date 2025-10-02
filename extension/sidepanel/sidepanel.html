@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Inspector</title>
+    <link rel="stylesheet" href="sidepanel.css">
+    <script src="../lib/lucide.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="panel-header">
+        <div class="header-top">
+            <h1 class="brand-title">Brand Inspector</h1>
+            <div class="status-indicator" id="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-navigation">
+        <button class="tab-button active" data-tab="overview">
+            <i data-lucide="eye" class="tab-icon"></i>
+            <span class="tab-label">Overview</span>
+        </button>
+        <button class="tab-button" data-tab="colors">
+            <i data-lucide="palette" class="tab-icon"></i>
+            <span class="tab-label">Colors</span>
+        </button>
+        <button class="tab-button" data-tab="fonts">
+            <i data-lucide="type" class="tab-icon"></i>
+            <span class="tab-label">Fonts</span>
+        </button>
+        <button class="tab-button" data-tab="assets">
+            <i data-lucide="image" class="tab-icon"></i>
+            <span class="tab-label">Assets</span>
+        </button>
+        <button class="tab-button" data-tab="profile">
+            <i data-lucide="user" class="tab-icon"></i>
+            <span class="tab-label">Profile</span>
+        </button>
+    </nav>
+
+    <!-- Inspector Controls -->
+    <div class="inspector-controls">
+        <button class="control-btn" id="pick-color-btn" title="Pick Color (Alt+Shift+C)">
+            <i data-lucide="droplet" class="btn-icon"></i>
+            <span class="btn-label">Pick Color</span>
+        </button>
+        <button class="control-btn" id="pick-font-btn" title="Pick Font (Alt+Shift+F)">
+            <i data-lucide="case-sensitive" class="btn-icon"></i>
+            <span class="btn-label">Pick Font</span>
+        </button>
+        <button class="control-btn" id="add-text-btn" title="Capture Text (Alt+Shift+T)">
+            <i data-lucide="file-text" class="btn-icon"></i>
+            <span class="btn-label">Add Text</span>
+        </button>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="tab-content-wrapper">
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="overview-tab">
+            <div class="empty-state">
+                <i data-lucide="search" class="empty-icon"></i>
+                <h2>No brand detected yet</h2>
+                <p>Navigate to a website to automatically extract brand assets, or use the picker tools above to manually select elements.</p>
+            </div>
+
+            <!-- Will be populated with brand overview -->
+            <div class="overview-content hidden" id="overview-content">
+                <!-- Hero Section -->
+                <section class="overview-section">
+                    <h3 class="section-title">Brand Snapshot</h3>
+                    <div class="brand-snapshot">
+                        <div class="snapshot-item">
+                            <label>Logo</label>
+                            <div class="logo-preview" id="overview-logo"></div>
+                        </div>
+                        <div class="snapshot-item">
+                            <label>Hero Image</label>
+                            <div class="hero-preview" id="overview-hero"></div>
+                        </div>
+                        <div class="snapshot-item">
+                            <label>Favicon</label>
+                            <div class="favicon-preview" id="overview-favicon"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Typography Section -->
+                <section class="overview-section">
+                    <h3 class="section-title">Typography</h3>
+                    <div class="typography-preview">
+                        <div class="font-item">
+                            <label>Display Font</label>
+                            <div class="font-sample" id="overview-display-font">-</div>
+                        </div>
+                        <div class="font-item">
+                            <label>Body Font</label>
+                            <div class="font-sample" id="overview-body-font">-</div>
+                        </div>
+                    </div>
+                    <button class="show-all-btn" data-expand="fonts">Show all fonts →</button>
+                </section>
+
+                <!-- Color Palette Section -->
+                <section class="overview-section">
+                    <h3 class="section-title">Color Palette</h3>
+                    <div class="color-palette-preview" id="overview-colors">
+                        <!-- Color swatches will be inserted here -->
+                    </div>
+                    <button class="show-all-btn" data-expand="colors">Show all colors →</button>
+                </section>
+            </div>
+        </div>
+
+        <!-- Colors Tab -->
+        <div class="tab-content" id="colors-tab">
+            <div class="empty-state">
+                <i data-lucide="palette" class="empty-icon"></i>
+                <h2>No colors captured</h2>
+                <p>Use the "Pick Color" tool to select colors from the page, or let us detect them automatically.</p>
+            </div>
+        </div>
+
+        <!-- Fonts Tab -->
+        <div class="tab-content" id="fonts-tab">
+            <div class="empty-state">
+                <i data-lucide="type" class="empty-icon"></i>
+                <h2>No fonts captured</h2>
+                <p>Use the "Pick Font" tool to select text elements from the page, or let us detect them automatically.</p>
+            </div>
+        </div>
+
+        <!-- Assets Tab -->
+        <div class="tab-content" id="assets-tab">
+            <div class="empty-state">
+                <i data-lucide="image" class="empty-icon"></i>
+                <h2>No assets captured</h2>
+                <p>Click on images, logos, or icons on the page to add them to your brand profile.</p>
+            </div>
+        </div>
+
+        <!-- Brand Profile Tab -->
+        <div class="tab-content" id="profile-tab">
+            <div class="empty-state">
+                <i data-lucide="user" class="empty-icon"></i>
+                <h2>No profile created</h2>
+                <p>Start capturing brand assets to build a complete brand profile.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Action Bar -->
+    <footer class="action-bar">
+        <button class="action-btn secondary" id="export-btn" disabled>
+            <i data-lucide="download" class="btn-icon"></i>
+            <span class="btn-label">Export</span>
+        </button>
+        <button class="action-btn primary" id="sync-btn" disabled>
+            <i data-lucide="cloud-upload" class="btn-icon"></i>
+            <span class="btn-label">Sync to App</span>
+        </button>
+    </footer>
+
+    <script src="sidepanel.js"></script>
+</body>
+</html>

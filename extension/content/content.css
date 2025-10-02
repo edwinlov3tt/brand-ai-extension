@@ -1,0 +1,21 @@
+/**
+ * Brand Inspector - Content Script Styles
+ * Styles for inspector overlay, tooltip, and other injected UI elements
+ */
+
+/* Inspector overlay (created dynamically) */
+#__brand-inspector-overlay__ {
+    /* Styles set via JavaScript */
+}
+
+/* Inspector tooltip (created dynamically) */
+#__brand-inspector-tooltip__ {
+    /* Styles set via JavaScript */
+}
+
+/* Prevent content shift when inspector is active */
+body.brand-inspector-active {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+}
