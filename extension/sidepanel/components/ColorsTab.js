@@ -31,7 +31,7 @@ class ColorsTab {
         controls.className = 'colors-controls';
         controls.innerHTML = `
             <div class="colors-header">
-                <h3 class="colors-count">0 colors</h3>
+                <h3 class="colors-count" data-count="0">Colors</h3>
                 <button class="add-color-btn" title="Add custom color">
                     <i data-lucide="plus" class="icon-sm"></i>
                     Add Color
@@ -78,7 +78,8 @@ class ColorsTab {
         emptyState.classList.add('hidden');
         if (controls) {
             controls.style.display = 'block';
-            controls.querySelector('.colors-count').textContent = `${this.colors.length} colors`;
+            const countElement = controls.querySelector('.colors-count');
+            countElement.setAttribute('data-count', this.colors.length);
         }
 
         // Create or update colors grid
@@ -140,34 +141,26 @@ class ColorsTab {
         const card = document.createElement('div');
         card.className = 'color-card';
 
+        // Apply background color to the card
+        card.style.backgroundColor = color.hex;
+
+        const instances = color.frequency || color.instances || color.count || 0;
+
         card.innerHTML = `
-            <div class="color-swatch-large" style="background-color: ${color.hex}"></div>
             <div class="color-info">
                 <div class="color-hex">${color.hex}</div>
-                <div class="color-rgb">${color.rgb || this.hexToRgb(color.hex)}</div>
+                <div class="color-instances">${instances} instance${instances === 1 ? '' : 's'}</div>
             </div>
-            <div class="color-actions">
-                <button class="color-action-btn copy-color-btn" title="Copy HEX" data-hex="${color.hex}">
-                    <i data-lucide="copy" class="icon-sm"></i>
-                </button>
-                <button class="color-action-btn delete-color-btn" title="Remove color">
-                    <i data-lucide="trash-2" class="icon-sm"></i>
-                </button>
-            </div>
+            <button class="color-copy-btn" title="Copy hex code">
+                <i data-lucide="copy" class="icon-sm"></i>
+            </button>
         `;
 
-        // Copy button
-        const copyBtn = card.querySelector('.copy-color-btn');
+        // Copy button click handler
+        const copyBtn = card.querySelector('.color-copy-btn');
         copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.copyColorToClipboard(color.hex);
-        });
-
-        // Delete button
-        const deleteBtn = card.querySelector('.delete-color-btn');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.deleteColor(color);
+            this.copyColorToClipboard(color.hex, copyBtn);
         });
 
         return card;
@@ -214,11 +207,32 @@ class ColorsTab {
     /**
      * Copy color to clipboard
      */
-    async copyColorToClipboard(hex) {
+    async copyColorToClipboard(hex, button) {
         try {
             await navigator.clipboard.writeText(hex);
             console.log(`Copied ${hex} to clipboard`);
-            // TODO: Show toast notification
+
+            // Visual feedback - simple approach
+            if (button) {
+                const originalContent = button.innerHTML;
+                button.classList.add('copied');
+                button.innerHTML = '<i data-lucide="check" class="icon-sm"></i>';
+
+                // Reinitialize icons
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+
+                setTimeout(() => {
+                    button.innerHTML = originalContent;
+                    button.classList.remove('copied');
+
+                    // Reinitialize icons again
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                }, 1500);
+            }
         } catch (err) {
             console.error('Failed to copy color:', err);
         }

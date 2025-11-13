@@ -34,7 +34,7 @@ class AssetsTab {
         controls.className = 'assets-controls';
         controls.innerHTML = `
             <div class="assets-header">
-                <h3 class="assets-count">0 assets</h3>
+                <h3 class="assets-count" data-count="0">Assets</h3>
                 <div class="view-toggle">
                     <button class="view-btn active" data-view="grid" title="Grid view">
                         <i data-lucide="grid-3x3" class="icon-sm"></i>
@@ -157,7 +157,8 @@ class AssetsTab {
         emptyState.classList.add('hidden');
         if (controls) {
             controls.style.display = 'block';
-            controls.querySelector('.assets-count').textContent = `${this.assets.length} assets`;
+            const countElement = controls.querySelector('.assets-count');
+            countElement.setAttribute('data-count', this.assets.length);
         }
 
         // Create or update assets grid

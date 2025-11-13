@@ -268,23 +268,53 @@ class AssetExtractor {
     }
 
     /**
-     * Check if image is likely a logo
+     * Check if image is likely a logo (stricter criteria)
      */
     isLikelyLogo(el, rect) {
-        // Check position (header, top of page)
-        if (rect.top < 150) return true;
+        // Logo must be a reasonable size (not tiny icons)
+        const MIN_LOGO_WIDTH = 60;
+        const MIN_LOGO_HEIGHT = 20;
+        const MAX_LOGO_WIDTH = 400;
+        const MAX_LOGO_HEIGHT = 200;
 
-        // Check for logo-related classes/IDs
+        if (rect.width < MIN_LOGO_WIDTH || rect.height < MIN_LOGO_HEIGHT) {
+            return false;
+        }
+
+        if (rect.width > MAX_LOGO_WIDTH || rect.height > MAX_LOGO_HEIGHT) {
+            return false;
+        }
+
+        // Must be in header/nav area
+        const inHeader = el.closest('header, nav, [role="banner"]');
+        if (!inHeader) return false;
+
+        // Check for logo-related keywords (must have 'logo' or 'brand', not just 'icon')
         const className = (el.className || '').toString().toLowerCase();
         const id = (el.id || '').toLowerCase();
         const alt = (el.alt || '').toLowerCase();
+        const src = (el.src || '').toLowerCase();
 
-        const logoKeywords = ['logo', 'brand', 'wordmark', 'icon'];
-        return logoKeywords.some(keyword =>
+        const strictLogoKeywords = ['logo', 'brand', 'wordmark'];
+        const hasLogoKeyword = strictLogoKeywords.some(keyword =>
             className.includes(keyword) ||
             id.includes(keyword) ||
-            alt.includes(keyword)
+            alt.includes(keyword) ||
+            src.includes(keyword)
         );
+
+        if (hasLogoKeyword) return true;
+
+        // If no explicit logo keyword, must be the first/main image in header
+        // and in the top left area (typical logo placement)
+        if (rect.left < 300 && rect.top < 100) {
+            const headerImages = inHeader.querySelectorAll('img, svg');
+            if (headerImages[0] === el) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

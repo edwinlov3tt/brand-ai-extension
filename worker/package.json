@@ -1,0 +1,22 @@
+{
+  "name": "brand-inspector-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for Brand Inspector - brand profile and ad copy generation",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "brand",
+    "ad-copy"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

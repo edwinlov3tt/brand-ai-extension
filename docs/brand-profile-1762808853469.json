@@ -1,0 +1,221 @@
+{
+  "colors": [
+    {
+      "hex": "#2d3748",
+      "rgb": "rgb(45, 55, 72)",
+      "role": "primary",
+      "frequency": 351,
+      "usedIn": [
+        "hero",
+        "header",
+        "background",
+        "main",
+        "footer"
+      ]
+    },
+    {
+      "hex": "#ffffff",
+      "rgb": "rgb(255, 255, 255)",
+      "role": "secondary",
+      "frequency": 49,
+      "usedIn": [
+        "hero",
+        "header",
+        "main",
+        "footer"
+      ]
+    },
+    {
+      "hex": "#1a202c",
+      "rgb": "rgb(26, 32, 44)",
+      "role": "detected",
+      "frequency": 32,
+      "usedIn": [
+        "main"
+      ]
+    },
+    {
+      "hex": "#fc9509",
+      "rgb": "rgb(252, 149, 9)",
+      "role": "detected",
+      "frequency": 23,
+      "usedIn": [
+        "main",
+        "footer"
+      ]
+    },
+    {
+      "hex": "#ff0000",
+      "rgb": "rgb(255, 0, 0)",
+      "role": "detected",
+      "frequency": 18,
+      "usedIn": [
+        "main"
+      ]
+    }
+  ],
+  "fonts": [
+    {
+      "family": "-apple-system",
+      "role": "display",
+      "weights": [
+        "700",
+        "400"
+      ],
+      "size": "21px",
+      "weight": "700",
+      "usedIn": [
+        "display",
+        "heading",
+        "body"
+      ],
+      "coverage": 96941396.13918889,
+      "count": 472,
+      "fontUrl": null
+    }
+  ],
+  "assets": [
+    {
+      "type": "image",
+      "format": "jpg",
+      "url": "https://www.sites4contractors.com/wp-content/uploads/2019/07/brads-small.jpg",
+      "width": 260,
+      "height": 182,
+      "naturalWidth": 1000,
+      "naturalHeight": 700,
+      "alt": "",
+      "fileName": "brads-small.jpg",
+      "fileSize": 153548,
+      "isLogo": false,
+      "isFavicon": false,
+      "element": "img"
+    },
+    {
+      "type": "image",
+      "format": "jpg",
+      "url": "https://www.sites4contractors.com/wp-content/uploads/2019/06/silver-lining-landscaping.jpg",
+      "width": 260,
+      "height": 182,
+      "naturalWidth": 1000,
+      "naturalHeight": 700,
+      "alt": "Landscaping Contractor Website Design",
+      "fileName": "silver-lining-landscaping.jpg",
+      "fileSize": 107478,
+      "isLogo": false,
+      "isFavicon": false,
+      "element": "img"
+    },
+    {
+      "type": "image",
+      "format": "jpg",
+      "url": "https://www.sites4contractors.com/wp-content/uploads/2019/06/signature-painting.jpg",
+      "width": 260,
+      "height": 182,
+      "naturalWidth": 1000,
+      "naturalHeight": 700,
+      "alt": "Painting Company Website Design",
+      "fileName": "signature-painting.jpg",
+      "fileSize": 131716,
+      "isLogo": false,
+      "isFavicon": false,
+      "element": "img"
+    },
+    {
+      "type": "favicon",
+      "format": "jpg",
+      "url": "https://www.sites4contractors.com/wp-content/uploads/2018/08/cropped-sites4logo-192x192.jpg",
+      "width": 192,
+      "height": 192,
+      "naturalWidth": 192,
+      "naturalHeight": 192,
+      "alt": "Favicon",
+      "fileName": "cropped-sites4logo-192x192.jpg",
+      "fileSize": null,
+      "isLogo": false,
+      "isFavicon": true,
+      "element": "link"
+    },
+    {
+      "type": "image",
+      "format": "png",
+      "url": "https://www.sites4contractors.com/wp-content/uploads/2021/11/cropped-Sites4-no-background.png",
+      "width": 400,
+      "height": 81,
+      "naturalWidth": 680,
+      "naturalHeight": 138,
+      "alt": "Website Design For Contractors | Sites4Contractors.Com",
+      "fileName": "cropped-Sites4-no-background.png",
+      "fileSize": 17569,
+      "isLogo": true,
+      "isFavicon": false,
+      "element": "img"
+    },
+    {
+      "type": "svg",
+      "format": "svg",
+      "url": "data:image/svg+xml;charset=utf-8,%3Csvg%20aria-hidden%3D%22true%22%20class%3D%22kadence-svg-icon%20kadence-menu-svg%22%20fill%3D%22currentColor%22%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%3E%3Ctitle%3EToggle%20Menu%3C%2Ftitle%3E%3Cpath%20d%3D%22M3%2013h18c0.552%200%201-0.448%201-1s-0.448-1-1-1h-18c-0.552%200-1%200.448-1%201s0.448%201%201%201zM3%207h18c0.552%200%201-0.448%201-1s-0.448-1-1-1h-18c-0.552%200-1%200.448-1%201s0.448%201%201%201zM3%2019h18c0.552%200%201-0.448%201-1s-0.448-1-1-1h-18c-0.552%200-1%200.448-1%201s0.448%201%201%201z%22%2F%3E%0A%09%09%09%09%3C%2Fsvg%3E",
+      "width": 40,
+      "height": 40,
+      "naturalWidth": 40,
+      "naturalHeight": 40,
+      "alt": "",
+      "fileName": "toggle-menu.svg",
+      "fileSize": 463,
+      "isLogo": false,
+      "isFavicon": false,
+      "element": "svg"
+    },
+    {
+      "type": "favicon",
+      "format": "jpg",
+      "url": "https://www.sites4contractors.com/wp-content/uploads/2018/08/cropped-sites4logo-32x32.jpg",
+      "width": 32,
+      "height": 32,
+      "naturalWidth": 32,
+      "naturalHeight": 32,
+      "alt": "Favicon",
+      "fileName": "cropped-sites4logo-32x32.jpg",
+      "fileSize": null,
+      "isLogo": false,
+      "isFavicon": true,
+      "element": "link"
+    },
+    {
+      "type": "favicon",
+      "format": "jpg",
+      "url": "https://www.sites4contractors.com/wp-content/uploads/2018/08/cropped-sites4logo-180x180.jpg",
+      "width": 32,
+      "height": 32,
+      "naturalWidth": 32,
+      "naturalHeight": 32,
+      "alt": "Favicon",
+      "fileName": "cropped-sites4logo-180x180.jpg",
+      "fileSize": null,
+      "isLogo": false,
+      "isFavicon": true,
+      "element": "link"
+    }
+  ],
+  "textSnippets": [],
+  "metadata": {
+    "url": "https://www.sites4contractors.com/professional-package/",
+    "title": "Professional Websites For Construction & Home Services Businesses.",
+    "timestamp": "2025-11-10T21:06:51.331Z",
+    "description": "Our Professional Website Package Click A Photo To See A Large Version Our Most Aggressive Website Package & On-Going Site Management. The professional website package is our most aggressive package.  This is a very robust website along with advanced search engine optimization and on-going site maintenance, photo handling, and content creation. This package was designed...",
+    "favicon": "https://www.sites4contractors.com/wp-content/uploads/2018/08/cropped-sites4logo-32x32.jpg",
+    "social": {
+      "facebook": "https://www.facebook.com/sites4contractors/",
+      "instagram": null,
+      "twitter": null,
+      "youtube": "https://www.youtube.com/channel/UCBELTX_XFsz2NsTj8sMMdEg",
+      "linkedin": null,
+      "googleBusiness": null
+    },
+    "contact": {
+      "emails": [],
+      "phones": [
+        "12507380600"
+      ]
+    }
+  }
+}

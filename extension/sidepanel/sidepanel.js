@@ -31,12 +31,16 @@ class SidePanelController {
         this.colorsTab = new ColorsTab();
         this.fontsTab = new FontsTab();
         this.assetsTab = new AssetsTab();
+        this.profileTab = new ProfileTab();
 
         // Setup tab navigation
         this.setupTabNavigation();
 
         // Setup inspector controls
         this.setupInspectorControls();
+
+        // Setup inspector toggle
+        this.setupInspectorToggle();
 
         // Setup action buttons
         this.setupActionButtons();
@@ -56,36 +60,104 @@ class SidePanelController {
         // Listen for tab updates (URL changes)
         this.setupTabUpdateListener();
 
-        // Request initial extraction from current tab
-        this.requestInitialExtraction();
+        // Setup storage listener for extraction status updates
+        this.setupStorageListener();
+
+        // Setup side panel close detection
+        this.setupPanelCloseDetection();
+    }
+
+    /**
+     * Setup storage listener for instant extraction status updates
+     */
+    setupStorageListener() {
+        chrome.storage.onChanged.addListener((changes, areaName) => {
+            if (areaName !== 'local') return;
+
+            // Listen for extraction status updates
+            if (changes.extractionStatus) {
+                const status = changes.extractionStatus.newValue;
+                console.log('Extraction status changed:', status);
+
+                if (status.state === 'checking') {
+                    this.updateStatus('Checking page...', 'syncing');
+                } else if (status.state === 'extracting') {
+                    this.updateStatus('Analyzing...', 'syncing');
+                } else if (status.state === 'complete') {
+                    this.updateStatus('Analysis complete', 'ready');
+                } else if (status.state === 'failed') {
+                    this.updateStatus('Failed', 'error');
+                }
+            }
+
+            // Listen for brand data messages (from service worker via storage)
+            if (changes.latestMessage) {
+                const message = changes.latestMessage.newValue;
+
+                if (message.action === 'BRAND_EXTRACTED') {
+                    this.handleBrandExtraction(message.data, message.incremental);
+                }
+            }
+        });
+    }
+
+    /**
+     * Setup side panel close detection
+     */
+    setupPanelCloseDetection() {
+        // Listen for beforeunload event (when panel is closing)
+        window.addEventListener('beforeunload', async () => {
+            console.log('Side panel closing, deactivating inspector');
+
+            // Get current tab and deactivate inspector
+            try {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tab) {
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'DEACTIVATE_INSPECTOR'
+                    }).catch(err => {
+                        console.log('Failed to deactivate inspector:', err);
+                    });
+                }
+            } catch (error) {
+                console.error('Error deactivating inspector on close:', error);
+            }
+        });
+
+        // Also use visibilitychange as a backup
+        document.addEventListener('visibilitychange', async () => {
+            if (document.hidden) {
+                console.log('Side panel hidden, deactivating inspector');
+
+                try {
+                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (tab) {
+                        chrome.tabs.sendMessage(tab.id, {
+                            action: 'DEACTIVATE_INSPECTOR'
+                        }).catch(err => {
+                            console.log('Failed to deactivate inspector:', err);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error deactivating inspector:', error);
+                }
+            }
+        });
     }
 
     /**
      * Setup listener for tab URL changes
      */
     setupTabUpdateListener() {
-        // Listen for tab updates
-        chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-            // Check if URL changed and it's the active tab
-            if (changeInfo.url) {
-                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                    if (tabs[0] && tabs[0].id === tabId) {
-                        console.log('Tab URL changed, clearing old data');
-                        this.reanalyzePage();
-                    }
-                });
-            }
-        });
+        // Note: URL change detection is now handled automatically by service worker
+        // This listener is kept for potential future use
 
         // Listen for tab activation (switching between tabs)
         chrome.tabs.onActivated.addListener(async (activeInfo) => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab) {
-                // Check if URL is different from stored metadata
-                if (this.brandData.metadata.url && this.brandData.metadata.url !== tab.url) {
-                    console.log('Switched to different URL, clearing old data');
-                    this.reanalyzePage();
-                }
+                // Load state for the new tab if available
+                this.loadState();
             }
         });
     }
@@ -163,6 +235,63 @@ class SidePanelController {
 
         // Re-initialize icons when switching tabs
         if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    /**
+     * Setup inspector toggle switch
+     */
+    setupInspectorToggle() {
+        const toggle = document.getElementById('inspector-mode-toggle');
+
+        if (!toggle) return;
+
+        toggle.addEventListener('change', async (e) => {
+            const isEnabled = e.target.checked;
+
+            if (isEnabled) {
+                // Enable inspector mode - activate based on current tab
+                const currentTab = this.currentTab;
+
+                if (currentTab === 'colors') {
+                    this.activateInspector('color');
+                } else if (currentTab === 'fonts') {
+                    this.activateInspector('font');
+                } else if (currentTab === 'assets') {
+                    this.activateInspector('image');
+                } else {
+                    // Default to color picker if on overview/profile
+                    this.activateInspector('color');
+                }
+            } else {
+                // Disable inspector mode
+                await this.deactivateInspector();
+            }
+        });
+
+        // Listen for tab changes to update toggle state
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Reset toggle when switching tabs
+                toggle.checked = false;
+            });
+        });
+    }
+
+    /**
+     * Deactivate inspector mode
+     */
+    async deactivateInspector() {
+        console.log('Deactivating inspector');
+
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+        if (!tab) return;
+
+        chrome.tabs.sendMessage(tab.id, {
+            action: 'DEACTIVATE_INSPECTOR'
+        }).catch(err => {
+            console.log('Failed to deactivate inspector:', err);
+        });
     }
 
     /**
@@ -271,10 +400,10 @@ class SidePanelController {
     }
 
     /**
-     * Reanalyze current page
+     * Reanalyze current page (manual trigger)
      */
     async reanalyzePage() {
-        console.log('Reanalyzing current page...');
+        console.log('Manually reanalyzing current page...');
 
         // Clear existing data
         this.brandData = {
@@ -292,8 +421,19 @@ class SidePanelController {
         this.updateAssetsTab();
         this.updateActionButtons();
 
-        // Request fresh extraction
-        await this.requestInitialExtraction();
+        // Update status
+        this.updateStatus('Analyzing page...', 'syncing');
+
+        // Get current tab and send extraction request
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) {
+            chrome.tabs.sendMessage(tab.id, {
+                action: 'EXTRACT_BRAND_DATA'
+            }).catch(err => {
+                console.error('Failed to send extraction request:', err);
+                this.updateStatus('Failed', 'error');
+            });
+        }
     }
 
     /**
@@ -345,52 +485,37 @@ class SidePanelController {
         });
     }
 
-    /**
-     * Request initial brand extraction from current page
-     */
-    async requestInitialExtraction() {
-        try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-            if (!tab) {
-                console.log('No active tab, skipping extraction');
-                return;
-            }
-
-            // Update status
-            this.updateStatus('Analyzing page...', 'syncing');
-
-            // Send message to content script to extract brand data
-            chrome.tabs.sendMessage(tab.id, {
-                action: 'EXTRACT_BRAND_DATA'
-            }).catch(err => {
-                console.log('Content script not ready yet:', err);
-                this.updateStatus('Ready', 'ready');
-            });
-
-        } catch (error) {
-            console.error('Failed to request extraction:', error);
-            this.updateStatus('Ready', 'ready');
-        }
-    }
 
     /**
      * Handle brand extraction results
      */
-    handleBrandExtraction(data) {
-        console.log('Brand data extracted:', data);
+    handleBrandExtraction(data, incremental = false) {
+        console.log('Brand data extracted:', data, 'incremental:', incremental);
 
-        // Merge with existing data
-        if (data.colors) this.brandData.colors = [...this.brandData.colors, ...data.colors];
-        if (data.fonts) this.brandData.fonts = [...this.brandData.fonts, ...data.fonts];
-        if (data.assets) this.brandData.assets = [...this.brandData.assets, ...data.assets];
-        if (data.metadata) this.brandData.metadata = { ...this.brandData.metadata, ...data.metadata };
+        if (incremental) {
+            // Incremental update - only merge metadata, preserve colors/fonts/assets
+            if (data.metadata) {
+                this.brandData.metadata = { ...this.brandData.metadata, ...data.metadata };
+            }
 
-        // Update UI
-        this.updateOverviewTab();
-        this.updateColorsTab();
-        this.updateFontsTab();
-        this.updateAssetsTab();
+            // Only update overview and metadata-related sections
+            this.updateOverviewTab();
+            this.showNotification('Page metadata updated', 'success');
+        } else {
+            // Full extraction - merge/replace all data
+            if (data.colors) this.brandData.colors = data.colors;
+            if (data.fonts) this.brandData.fonts = data.fonts;
+            if (data.assets) this.brandData.assets = data.assets;
+            if (data.metadata) this.brandData.metadata = data.metadata;
+
+            // Update all UI
+            this.updateOverviewTab();
+            this.updateColorsTab();
+            this.updateFontsTab();
+            this.updateAssetsTab();
+
+            this.showNotification('Brand assets detected successfully', 'success');
+        }
 
         // Save state
         this.saveState();
@@ -400,9 +525,6 @@ class SidePanelController {
 
         // Update status
         this.updateStatus('Analysis complete', 'ready');
-
-        // Show notification
-        this.showNotification('Brand assets detected successfully', 'success');
     }
 
     /**
@@ -522,7 +644,8 @@ class SidePanelController {
 
         if (this.brandData.colors.length === 0 &&
             this.brandData.fonts.length === 0 &&
-            this.brandData.assets.length === 0) {
+            this.brandData.assets.length === 0 &&
+            !this.brandData.metadata.title) {
             // Show empty state
             emptyState.classList.remove('hidden');
             overviewContent.classList.add('hidden');
@@ -534,6 +657,9 @@ class SidePanelController {
         // Hide empty state, show content
         emptyState.classList.add('hidden');
         overviewContent.classList.remove('hidden');
+
+        // Update Brand Snapshot
+        this.updateBrandSnapshot();
 
         // Update color palette preview
         const colorsContainer = document.getElementById('overview-colors');
@@ -562,8 +688,235 @@ class SidePanelController {
 
         // Re-initialize icons after DOM updates
         if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
 
-        // TODO: Update logo, hero, favicon when available
+    /**
+     * Update Brand Snapshot section
+     */
+    updateBrandSnapshot() {
+        const snapshotSection = document.getElementById('brand-snapshot-section');
+        const logoFaviconSection = document.getElementById('logo-favicon-section');
+        const metadata = this.brandData.metadata || {};
+
+        // Update Brand Snapshot section (includes meta image + text)
+        const hasSnapshotData = metadata.metaImage || metadata.title || metadata.description;
+        if (snapshotSection) {
+            snapshotSection.style.display = hasSnapshotData ? 'block' : 'none';
+        }
+
+        // Update Meta Image
+        const metaImageContainer = document.getElementById('meta-image-container');
+        const metaImagePreview = document.getElementById('overview-meta-image');
+        if (metaImagePreview && metaImageContainer) {
+            if (metadata.metaImage) {
+                metaImagePreview.innerHTML = `
+                    <img src="${metadata.metaImage}" alt="Meta Image">
+                    <button class="asset-download-btn" data-url="${metadata.metaImage}" data-filename="meta-image.jpg" title="Download meta image">
+                        <i data-lucide="download" class="icon-sm"></i>
+                    </button>
+                `;
+                metaImageContainer.style.display = 'block';
+            } else {
+                metaImageContainer.style.display = 'none';
+            }
+        }
+
+        // Update Page Name
+        const pageName = document.getElementById('overview-page-name');
+        if (pageName) {
+            pageName.textContent = metadata.title || '';
+            pageName.style.display = metadata.title ? 'block' : 'none';
+        }
+
+        // Update Tagline (use description)
+        const tagline = document.getElementById('overview-tagline');
+        if (tagline) {
+            tagline.textContent = metadata.description || metadata.tagline || '';
+            tagline.style.display = (metadata.description || metadata.tagline) ? 'block' : 'none';
+        }
+
+        // Update Logo & Favicon section
+        const hasLogoFavicon = metadata.logo || metadata.favicon;
+        if (logoFaviconSection) {
+            logoFaviconSection.style.display = hasLogoFavicon ? 'block' : 'none';
+        }
+
+        // Update Logo
+        const logoPreview = document.getElementById('overview-logo');
+        if (logoPreview) {
+            if (metadata.logo) {
+                const filename = this.getFilenameFromUrl(metadata.logo);
+                logoPreview.innerHTML = `
+                    <img src="${metadata.logo}" alt="Logo">
+                    <button class="asset-download-btn" data-url="${metadata.logo}" data-filename="${filename}" title="Download logo">
+                        <i data-lucide="download" class="icon-sm"></i>
+                    </button>
+                `;
+            } else {
+                logoPreview.innerHTML = '';
+            }
+        }
+
+        // Update Favicon
+        const faviconPreview = document.getElementById('overview-favicon');
+        if (faviconPreview) {
+            if (metadata.favicon) {
+                const filename = this.getFilenameFromUrl(metadata.favicon);
+                faviconPreview.innerHTML = `
+                    <img src="${metadata.favicon}" alt="Favicon">
+                    <button class="asset-download-btn" data-url="${metadata.favicon}" data-filename="${filename}" title="Download favicon">
+                        <i data-lucide="download" class="icon-sm"></i>
+                    </button>
+                `;
+            } else {
+                faviconPreview.innerHTML = '';
+            }
+        }
+
+        // Setup download button event listeners
+        this.setupAssetDownloadButtons();
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // Update Contact & Social section
+        this.updateContactSocial(metadata);
+    }
+
+    /**
+     * Get filename from URL
+     */
+    getFilenameFromUrl(url) {
+        try {
+            const pathname = new URL(url).pathname;
+            const filename = pathname.split('/').pop();
+            return filename || 'download';
+        } catch (e) {
+            return 'download';
+        }
+    }
+
+    /**
+     * Setup asset download button event listeners
+     */
+    setupAssetDownloadButtons() {
+        const downloadButtons = document.querySelectorAll('.asset-download-btn');
+        downloadButtons.forEach(button => {
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const url = button.dataset.url;
+                const filename = button.dataset.filename || 'asset';
+
+                try {
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = objectUrl;
+                    a.download = filename;
+                    a.click();
+
+                    URL.revokeObjectURL(objectUrl);
+                } catch (error) {
+                    console.error('Failed to download asset:', error);
+                    this.showNotification('Failed to download asset', 'error');
+                }
+            });
+        });
+    }
+
+    /**
+     * Update Contact & Social section
+     */
+    updateContactSocial(metadata) {
+        const section = document.getElementById('contact-social-section');
+        const socialLinksContainer = document.getElementById('social-links-container');
+        const contactInfoContainer = document.getElementById('contact-info-container');
+        const socialLinks = document.getElementById('overview-social-links');
+        const contactInfo = document.getElementById('overview-contact-info');
+
+        // Check if we have any social or contact data
+        const hasSocial = metadata.social && Object.values(metadata.social).some(v => v !== null);
+        const hasContact = metadata.contact && (metadata.contact.emails?.length > 0 || metadata.contact.phones?.length > 0);
+
+        // Hide entire section if no data
+        if (!hasSocial && !hasContact) {
+            if (section) section.style.display = 'none';
+            return;
+        }
+
+        // Show section
+        if (section) section.style.display = 'block';
+
+        // Update Social Media Links
+        if (hasSocial && socialLinks) {
+            socialLinksContainer.style.display = 'block';
+            socialLinks.innerHTML = '';
+
+            const socialPlatforms = [
+                { key: 'facebook', name: 'Facebook', icon: 'facebook' },
+                { key: 'instagram', name: 'Instagram', icon: 'instagram' },
+                { key: 'twitter', name: 'X', icon: 'twitter' },
+                { key: 'youtube', name: 'YouTube', icon: 'youtube' },
+                { key: 'linkedin', name: 'LinkedIn', icon: 'linkedin' },
+                { key: 'googleBusiness', name: 'Google', icon: 'map-pin' }
+            ];
+
+            socialPlatforms.forEach(platform => {
+                if (metadata.social[platform.key]) {
+                    const link = document.createElement('a');
+                    link.className = 'social-link';
+                    link.href = metadata.social[platform.key];
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    link.innerHTML = `
+                        <i data-lucide="${platform.icon}" class="icon-sm"></i>
+                        <span>${platform.name}</span>
+                    `;
+                    socialLinks.appendChild(link);
+                }
+            });
+        } else {
+            socialLinksContainer.style.display = 'none';
+        }
+
+        // Update Contact Information
+        if (hasContact && contactInfo) {
+            contactInfoContainer.style.display = 'block';
+            contactInfo.innerHTML = '';
+
+            // Add emails
+            if (metadata.contact.emails && metadata.contact.emails.length > 0) {
+                metadata.contact.emails.forEach(email => {
+                    const item = document.createElement('div');
+                    item.className = 'contact-item';
+                    item.innerHTML = `
+                        <i data-lucide="mail" class="contact-item-icon"></i>
+                        <a href="mailto:${email}" class="contact-item-link">${email}</a>
+                    `;
+                    contactInfo.appendChild(item);
+                });
+            }
+
+            // Add phones
+            if (metadata.contact.phones && metadata.contact.phones.length > 0) {
+                metadata.contact.phones.forEach(phone => {
+                    const item = document.createElement('div');
+                    item.className = 'contact-item';
+                    item.innerHTML = `
+                        <i data-lucide="phone" class="contact-item-icon"></i>
+                        <a href="tel:${phone}" class="contact-item-link">${phone}</a>
+                    `;
+                    contactInfo.appendChild(item);
+                });
+            }
+        } else {
+            contactInfoContainer.style.display = 'none';
+        }
+
+        // Re-initialize Lucide icons
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     /**
@@ -615,10 +968,27 @@ class SidePanelController {
      */
     updateStatus(text, type = 'ready') {
         const statusIndicator = document.getElementById('status-indicator');
-        const statusText = statusIndicator.querySelector('.status-text');
+        const statusDot = statusIndicator.querySelector('.status-dot');
+        const reanalyzeBtn = document.getElementById('reanalyze-btn');
 
-        statusText.textContent = text;
-        statusIndicator.className = 'status-indicator ' + type;
+        // Update title attribute for tooltip
+        if (statusIndicator) {
+            statusIndicator.title = text;
+        }
+
+        // Update status class for dot color
+        if (statusDot) {
+            statusDot.className = 'status-dot ' + type;
+        }
+
+        // Show reanalyze button only on errors
+        if (reanalyzeBtn) {
+            if (type === 'error') {
+                reanalyzeBtn.classList.add('visible');
+            } else {
+                reanalyzeBtn.classList.remove('visible');
+            }
+        }
     }
 
     /**

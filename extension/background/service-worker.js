@@ -6,6 +6,37 @@
 console.log('Brand Inspector service worker loaded');
 
 /**
+ * Extraction state management
+ */
+const extractionState = new Map(); // tabId -> { url, state, timestamp, retryCount }
+
+const ExtractionStates = {
+    IDLE: 'idle',
+    CHECKING: 'checking',
+    EXTRACTING: 'extracting',
+    COMPLETE: 'complete',
+    FAILED: 'failed'
+};
+
+/**
+ * Check if content script is ready
+ */
+async function pingContentScript(tabId, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await chrome.tabs.sendMessage(tabId, { action: 'PING' });
+            if (response && response.ready) {
+                return true;
+            }
+        } catch (error) {
+            console.log(`Ping attempt ${i + 1} failed, retrying...`);
+            await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, i))); // Exponential backoff
+        }
+    }
+    return false;
+}
+
+/**
  * Installation handler
  */
 chrome.runtime.onInstalled.addListener((details) => {
@@ -41,13 +72,30 @@ chrome.runtime.onInstalled.addListener((details) => {
 /**
  * Extension icon click handler - opens side panel
  */
-chrome.action.onClicked.addListener((tab) => {
+chrome.action.onClicked.addListener(async (tab) => {
     console.log('Extension icon clicked, opening side panel');
 
     // Open side panel for this tab
     chrome.sidePanel.open({ tabId: tab.id }).catch(err => {
         console.error('Failed to open side panel:', err);
     });
+
+    // Trigger extraction when side panel opens
+    if (tab.url) {
+        // Small delay to ensure content script is loaded
+        setTimeout(async () => {
+            chrome.storage.local.get(['brandData'], async (result) => {
+                const previousUrl = result.brandData?.metadata?.url;
+
+                // Extract if different URL or no previous data
+                if (!previousUrl || previousUrl !== tab.url) {
+                    console.log('Side panel opened, triggering extraction for:', tab.url);
+                    const sameSite = isSameSite(previousUrl, tab.url);
+                    await extractBrandData(tab.id, tab.url, !sameSite);
+                }
+            });
+        }, 100);
+    }
 });
 
 /**
@@ -105,8 +153,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     switch (message.action) {
         case 'BRAND_EXTRACTED':
+            // Mark extraction as complete
+            const tabId = sender.tab.id;
+            const state = extractionState.get(tabId);
+            if (state) {
+                extractionState.set(tabId, {
+                    ...state,
+                    state: ExtractionStates.COMPLETE
+                });
+
+                chrome.storage.local.set({
+                    extractionStatus: {
+                        state: ExtractionStates.COMPLETE,
+                        url: state.url
+                    }
+                });
+            }
+
             // Forward brand extraction data to side panel
-            forwardToSidePanel(message, sender.tab.id);
+            forwardToSidePanel(message, tabId);
             sendResponse({ received: true });
             break;
 
@@ -173,25 +238,139 @@ async function forwardToSidePanel(message, tabId) {
 }
 
 /**
+ * Extract brand data with retry logic
+ */
+async function extractBrandData(tabId, url, isFullExtraction = true) {
+    const state = extractionState.get(tabId) || {};
+
+    // Check for duplicate extraction (within 5 seconds)
+    if (state.url === url && state.timestamp && (Date.now() - state.timestamp < 5000)) {
+        console.log('Skipping duplicate extraction for:', url);
+        return;
+    }
+
+    // Check if already extracting
+    if (state.state === ExtractionStates.EXTRACTING) {
+        console.log('Extraction already in progress for tab:', tabId);
+        return;
+    }
+
+    // Update state
+    extractionState.set(tabId, {
+        url,
+        state: ExtractionStates.CHECKING,
+        timestamp: Date.now(),
+        retryCount: 0
+    });
+
+    // Update status in storage
+    chrome.storage.local.set({
+        extractionStatus: { state: ExtractionStates.CHECKING, url }
+    });
+
+    // Check if content script is ready
+    const isReady = await pingContentScript(tabId);
+
+    if (!isReady) {
+        console.error('Content script not ready after retries');
+        extractionState.set(tabId, {
+            ...extractionState.get(tabId),
+            state: ExtractionStates.FAILED
+        });
+        chrome.storage.local.set({
+            extractionStatus: { state: ExtractionStates.FAILED, url, error: 'Content script not ready' }
+        });
+        return;
+    }
+
+    // Content script ready, start extraction
+    extractionState.set(tabId, {
+        ...extractionState.get(tabId),
+        state: ExtractionStates.EXTRACTING
+    });
+
+    chrome.storage.local.set({
+        extractionStatus: { state: ExtractionStates.EXTRACTING, url }
+    });
+
+    try {
+        const action = isFullExtraction ? 'EXTRACT_BRAND_DATA' : 'EXTRACT_METADATA_ONLY';
+
+        // Send extraction request - completion will be marked when BRAND_EXTRACTED message arrives
+        chrome.tabs.sendMessage(tabId, { action }).catch(err => {
+            console.warn('Message send failed (tab may have closed):', err.message);
+
+            // Mark as failed if message couldn't be sent
+            extractionState.set(tabId, {
+                ...extractionState.get(tabId),
+                state: ExtractionStates.FAILED
+            });
+
+            chrome.storage.local.set({
+                extractionStatus: { state: ExtractionStates.FAILED, url, error: err.message }
+            });
+        });
+
+        console.log(`Extraction request sent for: ${url}`);
+
+    } catch (error) {
+        console.error('Extraction failed:', error);
+        extractionState.set(tabId, {
+            ...extractionState.get(tabId),
+            state: ExtractionStates.FAILED
+        });
+
+        chrome.storage.local.set({
+            extractionStatus: { state: ExtractionStates.FAILED, url, error: error.message }
+        });
+    }
+}
+
+/**
+ * Check if navigation is same-site
+ */
+function isSameSite(url1, url2) {
+    if (!url1 || !url2) return false;
+    try {
+        const origin1 = new URL(url1).origin;
+        const origin2 = new URL(url2).origin;
+        return origin1 === origin2;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Tab update handler - detect page navigation
  */
+let navigationTimeouts = new Map();
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
         console.log('Page loaded:', tab.url);
 
-        // Check if auto-extract is enabled
-        chrome.storage.local.get(['settings'], (result) => {
-            if (result.settings?.autoExtract !== false) {
-                // Trigger automatic brand extraction
-                setTimeout(() => {
-                    chrome.tabs.sendMessage(tabId, {
-                        action: 'EXTRACT_BRAND_DATA'
-                    }).catch(err => {
-                        console.log('Content script not ready or extraction failed:', err);
-                    });
-                }, 1000); // Wait 1 second for page to settle
-            }
-        });
+        // Clear any pending timeout for this tab
+        if (navigationTimeouts.has(tabId)) {
+            clearTimeout(navigationTimeouts.get(tabId));
+        }
+
+        // Debounce rapid navigation (300ms)
+        const timeout = setTimeout(async () => {
+            navigationTimeouts.delete(tabId);
+
+            // Check if auto-extract is enabled
+            chrome.storage.local.get(['settings', 'brandData'], async (result) => {
+                if (result.settings?.autoExtract === false) return;
+
+                const previousUrl = result.brandData?.metadata?.url;
+                const sameSite = isSameSite(previousUrl, tab.url);
+
+                // Full extraction for new site, incremental for same site
+                await extractBrandData(tabId, tab.url, !sameSite);
+            });
+        }, 300);
+
+        navigationTimeouts.set(tabId, timeout);
     }
 });
 

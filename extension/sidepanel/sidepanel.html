@@ -10,42 +10,44 @@
 <body>
     <!-- Header -->
     <header class="panel-header">
-        <div class="header-top">
-            <h1 class="brand-title">Brand Inspector</h1>
-            <div class="header-actions">
-                <button class="reanalyze-btn" id="reanalyze-btn" title="Reanalyze current page">
-                    <i data-lucide="refresh-cw" class="icon-sm"></i>
-                    <span class="btn-label">Reanalyze</span>
-                </button>
-                <div class="status-indicator" id="status-indicator">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Ready</span>
-                </div>
+        <div class="header-left">
+            <label class="inspector-toggle" title="Toggle Inspector Mode">
+                <input type="checkbox" id="inspector-mode-toggle">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Inspector</span>
+            </label>
+        </div>
+        <div class="header-actions">
+            <button class="icon-btn reanalyze-btn" id="reanalyze-btn" title="Reanalyze current page">
+                <i data-lucide="refresh-cw" class="icon-sm"></i>
+            </button>
+            <div class="status-indicator" id="status-indicator">
+                <span class="status-dot"></span>
             </div>
         </div>
     </header>
 
-    <!-- Main Navigation (formerly Inspector Controls) -->
+    <!-- Tab Navigation -->
     <nav class="tab-navigation">
         <button class="tab-button active" data-tab="overview" title="Overview">
-            <i data-lucide="eye" class="tab-icon"></i>
-            <span class="tab-label">Overview</span>
+            <i data-lucide="eye" class="btn-icon"></i>
+            <span class="btn-label">Overview</span>
         </button>
         <button class="tab-button" data-tab="colors" id="pick-color-btn" title="Colors (Alt+Shift+C)">
-            <i data-lucide="palette" class="tab-icon"></i>
-            <span class="tab-label">Colors</span>
+            <i data-lucide="palette" class="btn-icon"></i>
+            <span class="btn-label">Colors</span>
         </button>
         <button class="tab-button" data-tab="fonts" id="pick-font-btn" title="Fonts (Alt+Shift+F)">
-            <i data-lucide="type" class="tab-icon"></i>
-            <span class="tab-label">Fonts</span>
+            <i data-lucide="type" class="btn-icon"></i>
+            <span class="btn-label">Fonts</span>
         </button>
         <button class="tab-button" data-tab="assets" id="pick-image-btn" title="Assets (Alt+Shift+I)">
-            <i data-lucide="image" class="tab-icon"></i>
-            <span class="tab-label">Assets</span>
+            <i data-lucide="image" class="btn-icon"></i>
+            <span class="btn-label">Assets</span>
         </button>
         <button class="tab-button" data-tab="profile" title="Profile">
-            <i data-lucide="user" class="tab-icon"></i>
-            <span class="tab-label">Profile</span>
+            <i data-lucide="user" class="btn-icon"></i>
+            <span class="btn-label">Profile</span>
         </button>
     </nav>
 
@@ -61,21 +63,77 @@
 
             <!-- Will be populated with brand overview -->
             <div class="overview-content hidden" id="overview-content">
-                <!-- Hero Section -->
-                <section class="overview-section">
+                <!-- Brand Snapshot Section -->
+                <section class="overview-section" id="brand-snapshot-section">
                     <h3 class="section-title">Brand Snapshot</h3>
                     <div class="brand-snapshot">
-                        <div class="snapshot-item">
+                        <!-- Meta Image -->
+                        <div class="snapshot-meta-image" id="meta-image-container">
+                            <div class="meta-image-preview" id="overview-meta-image">
+                                <button class="asset-download-btn" title="Download meta image">
+                                    <i data-lucide="download" class="icon-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Text Info -->
+                        <div class="snapshot-info">
+                            <div class="brand-identity">
+                                <h2 class="brand-page-name" id="overview-page-name"></h2>
+                                <p class="brand-tagline" id="overview-tagline"></p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Logo & Favicon Section -->
+                <section class="overview-section" id="logo-favicon-section">
+                    <div class="logo-favicon-grid">
+                        <div class="asset-item">
                             <label>Logo</label>
-                            <div class="logo-preview" id="overview-logo"></div>
+                            <div class="asset-preview logo-preview" id="overview-logo">
+                                <button class="asset-download-btn" title="Download logo">
+                                    <i data-lucide="download" class="icon-sm"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div class="snapshot-item">
-                            <label>Hero Image</label>
-                            <div class="hero-preview" id="overview-hero"></div>
-                        </div>
-                        <div class="snapshot-item">
+                        <div class="asset-item">
                             <label>Favicon</label>
-                            <div class="favicon-preview" id="overview-favicon"></div>
+                            <div class="asset-preview favicon-preview" id="overview-favicon">
+                                <button class="asset-download-btn" title="Download favicon">
+                                    <i data-lucide="download" class="icon-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Color Palette Section -->
+                <section class="overview-section">
+                    <h3 class="section-title">Color Palette</h3>
+                    <div class="color-palette-preview" id="overview-colors">
+                        <!-- Color swatches will be inserted here -->
+                    </div>
+                    <button class="show-all-btn" data-expand="colors">Show all colors →</button>
+                </section>
+
+                <!-- Contact & Social Section -->
+                <section class="overview-section" id="contact-social-section">
+                    <h3 class="section-title">Contact & Social</h3>
+
+                    <!-- Social Media -->
+                    <div class="social-links-container" id="social-links-container">
+                        <h4 class="subsection-title">Social Media</h4>
+                        <div class="social-links" id="overview-social-links">
+                            <!-- Social links will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="contact-info-container" id="contact-info-container">
+                        <h4 class="subsection-title">Contact</h4>
+                        <div class="contact-info" id="overview-contact-info">
+                            <!-- Contact info will be inserted here -->
                         </div>
                     </div>
                 </section>
@@ -94,15 +152,6 @@
                         </div>
                     </div>
                     <button class="show-all-btn" data-expand="fonts">Show all fonts →</button>
-                </section>
-
-                <!-- Color Palette Section -->
-                <section class="overview-section">
-                    <h3 class="section-title">Color Palette</h3>
-                    <div class="color-palette-preview" id="overview-colors">
-                        <!-- Color swatches will be inserted here -->
-                    </div>
-                    <button class="show-all-btn" data-expand="colors">Show all colors →</button>
                 </section>
             </div>
         </div>
@@ -159,6 +208,7 @@
     <script src="components/ColorsTab.js"></script>
     <script src="components/FontsTab.js"></script>
     <script src="components/AssetsTab.js"></script>
+    <script src="components/ProfileTab.js"></script>
     <script src="sidepanel.js"></script>
 </body>
 </html>
