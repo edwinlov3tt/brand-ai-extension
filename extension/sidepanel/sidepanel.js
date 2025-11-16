@@ -71,7 +71,7 @@ class SidePanelController {
      * Setup storage listener for instant extraction status updates
      */
     setupStorageListener() {
-        chrome.storage.onChanged.addListener((changes, areaName) => {
+        chrome.storage.onChanged.addListener(async (changes, areaName) => {
             if (areaName !== 'local') return;
 
             // Listen for extraction status updates
@@ -95,6 +95,13 @@ class SidePanelController {
                 const message = changes.latestMessage.newValue;
 
                 if (message.action === 'BRAND_EXTRACTED') {
+                    // Only process messages for the currently active tab
+                    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (!activeTab || message.tabId !== activeTab.id) {
+                        console.log('Ignoring BRAND_EXTRACTED from non-active tab:', message.tabId, 'active:', activeTab?.id);
+                        return;
+                    }
+
                     this.handleBrandExtraction(message.data, message.incremental);
                 }
             }
@@ -105,44 +112,38 @@ class SidePanelController {
      * Setup side panel close detection
      */
     setupPanelCloseDetection() {
+        // Store current tab ID for synchronous access
+        let currentTabId = null;
+
+        // Track current tab
+        chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+            if (tab) currentTabId = tab.id;
+        });
+
+        // Update tab ID when switching tabs
+        chrome.tabs.onActivated.addListener(async (activeInfo) => {
+            currentTabId = activeInfo.tabId;
+        });
+
         // Listen for beforeunload event (when panel is closing)
-        window.addEventListener('beforeunload', async () => {
+        window.addEventListener('beforeunload', () => {
             console.log('Side panel closing, deactivating inspector');
 
-            // Get current tab and deactivate inspector
-            try {
-                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                if (tab) {
-                    chrome.tabs.sendMessage(tab.id, {
-                        action: 'DEACTIVATE_INSPECTOR'
-                    }).catch(err => {
-                        console.log('Failed to deactivate inspector:', err);
-                    });
-                }
-            } catch (error) {
-                console.error('Error deactivating inspector on close:', error);
+            // Use synchronous approach - no await to ensure message sends before close
+            if (currentTabId) {
+                chrome.tabs.sendMessage(currentTabId, {
+                    action: 'DEACTIVATE_INSPECTOR'
+                }).catch(err => {
+                    console.log('Failed to deactivate inspector:', err);
+                });
+
+                // Also reset the toggle
+                const toggle = document.getElementById('inspector-mode-toggle');
+                if (toggle) toggle.checked = false;
             }
         });
 
-        // Also use visibilitychange as a backup
-        document.addEventListener('visibilitychange', async () => {
-            if (document.hidden) {
-                console.log('Side panel hidden, deactivating inspector');
-
-                try {
-                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                    if (tab) {
-                        chrome.tabs.sendMessage(tab.id, {
-                            action: 'DEACTIVATE_INSPECTOR'
-                        }).catch(err => {
-                            console.log('Failed to deactivate inspector:', err);
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error deactivating inspector:', error);
-                }
-            }
-        });
+        // Note: Removed visibilitychange listener as it fires too often (when switching browser tabs)
     }
 
     /**
@@ -268,13 +269,8 @@ class SidePanelController {
             }
         });
 
-        // Listen for tab changes to update toggle state
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Reset toggle when switching tabs
-                toggle.checked = false;
-            });
-        });
+        // Note: Removed auto-reset on tab switch to allow inspector to stay active
+        // Users can manually toggle off if needed
     }
 
     /**
@@ -331,7 +327,16 @@ class SidePanelController {
      * Activate inspector mode in content script
      */
     async activateInspector(mode) {
-        console.log(`Activating ${mode} inspector`);
+        console.log(`Attempting to activate ${mode} inspector`);
+
+        // Check if inspector toggle is enabled
+        const toggle = document.getElementById('inspector-mode-toggle');
+        if (!toggle || !toggle.checked) {
+            console.log('Inspector toggle is OFF - activation blocked');
+            return;
+        }
+
+        console.log(`Inspector toggle is ON - activating ${mode} inspector`);
 
         // Get current tab
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -642,10 +647,12 @@ class SidePanelController {
         const emptyState = document.querySelector('#overview-tab .empty-state');
         const overviewContent = document.getElementById('overview-content');
 
-        if (this.brandData.colors.length === 0 &&
-            this.brandData.fonts.length === 0 &&
-            this.brandData.assets.length === 0 &&
-            !this.brandData.metadata.title) {
+        // Check if we have any brand data to display
+        if (!this.brandData || !this.brandData.colors ||
+            (this.brandData.colors.length === 0 &&
+             this.brandData.fonts.length === 0 &&
+             this.brandData.assets.length === 0 &&
+             !this.brandData.metadata?.title)) {
             // Show empty state
             emptyState.classList.remove('hidden');
             overviewContent.classList.add('hidden');
@@ -1035,33 +1042,88 @@ class SidePanelController {
     }
 
     /**
-     * Save state to Chrome storage
+     * Save state to Chrome storage (per-tab brand data)
      */
     async saveState() {
         try {
+            // Get the currently active tab
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+            if (!activeTab?.id) {
+                console.warn('No active tab, skipping save');
+                return;
+            }
+
+            // Load existing per-tab data
+            const result = await chrome.storage.local.get(['brandDataByTab']);
+            const brandDataByTab = result.brandDataByTab || {};
+
+            // Update data for the current tab (exclude assets to save storage)
+            brandDataByTab[activeTab.id] = {
+                colors: this.brandData.colors || [],
+                fonts: this.brandData.fonts || [],
+                // assets: excluded - images are heavy (~500KB-2MB per tab)
+                // Assets will re-extract automatically when tab is revisited
+                textSnippets: this.brandData.textSnippets || [],
+                metadata: this.brandData.metadata || {}
+            };
+
             await chrome.storage.local.set({
-                brandData: this.brandData,
+                brandDataByTab,
                 currentTab: this.currentTab
             });
-            console.log('State saved');
+            console.log('State saved for tab:', activeTab.id, '(excluding assets to save storage)');
         } catch (error) {
             console.error('Failed to save state:', error);
         }
     }
 
     /**
-     * Load state from Chrome storage
+     * Load state from Chrome storage (per-tab brand data)
      */
     async loadState() {
         try {
-            const result = await chrome.storage.local.get(['brandData', 'currentTab']);
+            // Get the currently active tab
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            const result = await chrome.storage.local.get(['brandDataByTab', 'brandData', 'currentTab']);
 
-            if (result.brandData) {
-                this.brandData = result.brandData;
-                this.updateOverviewTab();
-                this.updateActionButtons();
-                console.log('State loaded');
+            // Migration: Convert old global brandData to per-tab format
+            if (result.brandData && !result.brandDataByTab && activeTab?.id) {
+                console.log('Migrating old brandData to per-tab format');
+                const brandDataByTab = {
+                    [activeTab.id]: result.brandData
+                };
+                await chrome.storage.local.set({ brandDataByTab });
+                await chrome.storage.local.remove(['brandData']); // Clean up old format
+                result.brandDataByTab = brandDataByTab;
             }
+
+            // Load brand data for the active tab (or keep default empty structure)
+            if (activeTab?.id && result.brandDataByTab?.[activeTab.id]) {
+                const cachedData = result.brandDataByTab[activeTab.id];
+
+                // Merge cached data with current brandData structure
+                // Note: assets are not cached (too heavy), so they'll be empty until re-extraction
+                this.brandData = {
+                    colors: cachedData.colors || [],
+                    fonts: cachedData.fonts || [],
+                    assets: [],  // Always empty - will re-extract automatically
+                    textSnippets: cachedData.textSnippets || [],
+                    metadata: cachedData.metadata || {}
+                };
+
+                console.log('State loaded for tab:', activeTab.id, '(assets will re-extract)');
+            } else {
+                // No cached data for this tab yet - extraction will populate it
+                console.log('No cached brand data for tab:', activeTab?.id, '- will extract from page');
+            }
+
+            // Always update UI (will show empty state if no data)
+            this.updateOverviewTab();
+            this.updateColorsTab();   // Update colors from cache
+            this.updateFontsTab();    // Update fonts from cache
+            this.updateAssetsTab();   // Update assets (will be empty until re-extraction)
+            this.updateActionButtons();
 
             if (result.currentTab) {
                 this.switchTab(result.currentTab);

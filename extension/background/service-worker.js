@@ -21,18 +21,21 @@ const ExtractionStates = {
 /**
  * Check if content script is ready
  */
-async function pingContentScript(tabId, retries = 3) {
+async function pingContentScript(tabId, retries = 5) {
     for (let i = 0; i < retries; i++) {
         try {
             const response = await chrome.tabs.sendMessage(tabId, { action: 'PING' });
             if (response && response.ready) {
+                console.log(`Content script ready for tab ${tabId} (attempt ${i + 1})`);
                 return true;
             }
         } catch (error) {
-            console.log(`Ping attempt ${i + 1} failed, retrying...`);
-            await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, i))); // Exponential backoff
+            console.log(`Ping attempt ${i + 1}/${retries} failed for tab ${tabId}, retrying...`);
+            // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
+            await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, i)));
         }
     }
+    console.warn(`Content script not ready for tab ${tabId} after ${retries} attempts`);
     return false;
 }
 
@@ -170,8 +173,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 });
             }
 
-            // Forward brand extraction data to side panel
-            forwardToSidePanel(message, tabId);
+            // Store brand data per-tab
+            chrome.storage.local.get(['brandDataByTab'], (result) => {
+                const brandDataByTab = result.brandDataByTab || {};
+                brandDataByTab[tabId] = message.data;
+
+                chrome.storage.local.set({
+                    brandDataByTab,
+                    latestMessage: {
+                        ...message,
+                        tabId,
+                        timestamp: Date.now()
+                    }
+                });
+            });
+
             sendResponse({ received: true });
             break;
 
@@ -240,12 +256,12 @@ async function forwardToSidePanel(message, tabId) {
 /**
  * Extract brand data with retry logic
  */
-async function extractBrandData(tabId, url, isFullExtraction = true) {
+async function extractBrandData(tabId, url, isFullExtraction = true, bypassDuplicateCheck = false) {
     const state = extractionState.get(tabId) || {};
 
-    // Check for duplicate extraction (within 5 seconds)
-    if (state.url === url && state.timestamp && (Date.now() - state.timestamp < 5000)) {
-        console.log('Skipping duplicate extraction for:', url);
+    // Check for duplicate extraction (within 2 seconds, unless bypassed)
+    if (!bypassDuplicateCheck && state.url === url && state.timestamp && (Date.now() - state.timestamp < 2000)) {
+        console.log('Skipping duplicate extraction for:', url, '(within 2s)');
         return;
     }
 
@@ -375,15 +391,45 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 /**
- * Tab activation handler - update side panel context
+ * Tab activation handler - update side panel context and trigger extraction
  */
-chrome.tabs.onActivated.addListener((activeInfo) => {
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
     console.log('Tab activated:', activeInfo.tabId);
 
-    // Notify side panel of tab change
-    chrome.storage.local.set({
-        activeTabId: activeInfo.tabId
-    });
+    try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+
+        // Check if URL is valid HTTP(S)
+        if (!tab.url || !/^https?:\/\//.test(tab.url)) {
+            console.log('Skipping non-HTTP(S) tab:', tab.url);
+            return;
+        }
+
+        // Notify side panel of tab change
+        await chrome.storage.local.set({
+            activeTabId: activeInfo.tabId
+        });
+
+        // Get settings and current brand data
+        const result = await chrome.storage.local.get(['settings', 'brandDataByTab']);
+
+        // Skip if auto-extract is disabled
+        if (result.settings?.autoExtract === false) {
+            console.log('Auto-extract disabled, skipping extraction');
+            return;
+        }
+
+        // Check if we already have data for this tab
+        const existingData = result.brandDataByTab?.[activeInfo.tabId];
+        const previousUrl = existingData?.metadata?.url;
+        const sameSite = isSameSite(previousUrl, tab.url);
+
+        // Extract brand data (always extract on tab switch, bypass duplicate check)
+        // This ensures fresh data when user switches tabs
+        await extractBrandData(activeInfo.tabId, tab.url, !sameSite, true);
+    } catch (error) {
+        console.error('Failed to handle tab activation:', error);
+    }
 });
 
 /**

@@ -155,7 +155,7 @@ async function handleGetBrandProfile(domain, env, corsHeaders) {
  */
 async function handleGenerateAdCopy(request, env, corsHeaders) {
   const body = await request.json();
-  const { brandProfileId, domain, tactic, campaignObjective, variations = 3 } = body;
+  const { brandProfileId, domain, tactic, campaignObjective, variations = 3, includeEmojis = false, emojiInstructions } = body;
 
   if (!tactic || !campaignObjective) {
     return jsonResponse({ error: 'Missing required fields: tactic, campaignObjective' }, 400, corsHeaders);
@@ -183,30 +183,51 @@ async function handleGenerateAdCopy(request, env, corsHeaders) {
     return jsonResponse({ error: 'Brand profile not found' }, 404, corsHeaders);
   }
 
-  // Generate ad copy
+  // Generate ad copy (supports both single and multi-component tactics)
   const adCopies = await generateAdCopy(
     brandProfile,
     tactic,
     campaignObjective,
     Math.min(variations, 5), // Max 5 variations
-    env
+    env,
+    includeEmojis,
+    emojiInstructions
   );
 
-  // Save to D1
-  for (const copy of adCopies) {
+  // Save to D1 (handle both single and multi-component results)
+  if (Array.isArray(adCopies)) {
+    // Single component tactics - array of variations
+    for (const copy of adCopies) {
+      await env.DB.prepare(`
+        INSERT INTO ad_copies (
+          id, brand_profile_id, tactic, campaign_objective,
+          copy_text, character_count, word_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        copy.id,
+        brandProfile.id,
+        copy.tactic,
+        copy.objective,
+        copy.text,
+        copy.charCount,
+        copy.wordCount
+      ).run();
+    }
+  } else if (adCopies.multiComponent) {
+    // Multi-component tactics - save as JSON
     await env.DB.prepare(`
       INSERT INTO ad_copies (
         id, brand_profile_id, tactic, campaign_objective,
         copy_text, character_count, word_count
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      copy.id,
+      adCopies.id,
       brandProfile.id,
-      copy.tactic,
-      copy.objective,
-      copy.text,
-      copy.charCount,
-      copy.wordCount
+      adCopies.tactic,
+      adCopies.objective,
+      JSON.stringify(adCopies.components), // Store as JSON string
+      0, // Not applicable for multi-component
+      0  // Not applicable for multi-component
     ).run();
   }
 

@@ -164,8 +164,8 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 position: absolute;
                 pointer-events: none;
                 z-index: 2147483646;
-                border: 2px dashed #4A90E2;
-                background: rgba(74, 144, 226, 0.1);
+                border: 2px solid #FF0000;
+                background: rgba(255, 0, 0, 0.1);
                 display: none;
             `;
             document.body.appendChild(this.overlay);
@@ -720,6 +720,35 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 }
             });
 
+            // Detect framework/theme to filter default colors
+            const isElementorSite = () => {
+                return document.querySelector('[data-elementor-type]') !== null ||
+                       document.querySelector('.elementor-section') !== null ||
+                       document.querySelectorAll('[class*="elementor-"]').length > 10;
+            };
+
+            // Framework theme color blocklist
+            const THEME_COLOR_BLOCKLIST = {
+                elementor: [
+                    '#cc3366', // Hello Elementor default accent
+                    '#CC3366', // Case variation
+                    '#61ce70', // Elementor default green
+                    '#4054b2'  // Elementor default blue
+                ]
+            };
+
+            // Build set of framework colors to check
+            const frameworkColors = new Set();
+            if (isElementorSite()) {
+                THEME_COLOR_BLOCKLIST.elementor.forEach(color => {
+                    frameworkColors.add(color.toLowerCase());
+                });
+                console.log('Elementor site detected - filtering theme default colors');
+            }
+
+            // Calculate total weight for coverage percentage
+            const totalWeight = Array.from(colorData.values()).reduce((sum, d) => sum + d.weight, 0);
+
             // Filter out near-white, near-black, and grays (unless heavily used)
             const filteredColors = Array.from(colorData.entries()).filter(([hex, data]) => {
                 // Parse hex to check lightness
@@ -743,6 +772,23 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
 
                 // Require minimum saturation for brand colors (0.2) unless in header/hero/cta
                 if (saturation < 0.2 && !data.usedIn.has('header') && !data.usedIn.has('hero') && !data.usedIn.has('cta')) {
+                    return false;
+                }
+
+                // Filter framework theme colors UNLESS heavily used as actual brand colors
+                if (frameworkColors.has(hex.toLowerCase())) {
+                    const coverage = totalWeight > 0 ? data.weight / totalWeight : 0;
+
+                    // Keep if: heavily used (30+ instances) OR in header/hero OR >5% coverage
+                    if (data.count >= 30 ||
+                        data.usedIn.has('header') ||
+                        data.usedIn.has('hero') ||
+                        coverage >= 0.05) {
+                        console.log(`Keeping framework color ${hex} - legitimate brand usage (count: ${data.count}, coverage: ${(coverage * 100).toFixed(1)}%)`);
+                        return true;
+                    }
+
+                    console.log(`Filtered framework theme color ${hex} - likely boilerplate (count: ${data.count}, coverage: ${(coverage * 100).toFixed(1)}%)`);
                     return false;
                 }
 

@@ -5,12 +5,17 @@
 import { getTactic, validateCopy } from './tactics.js';
 
 /**
- * Generate ad copy variations
+ * Generate ad copy variations (single component tactics)
  */
-export async function generateAdCopy(brandProfile, tacticId, campaignObjective, variations, env) {
+export async function generateAdCopy(brandProfile, tacticId, campaignObjective, variations, env, includeEmojis, emojiInstructions) {
   const tactic = getTactic(tacticId);
   if (!tactic) {
     throw new Error(`Invalid tactic: ${tacticId}`);
+  }
+
+  // Check if this is a multi-component tactic
+  if (tactic.multiComponent) {
+    return await generateMultiComponentAdCopy(brandProfile, tacticId, campaignObjective, env, includeEmojis, emojiInstructions);
   }
 
   if (!env.ANTHROPIC_API_KEY) {
@@ -27,14 +32,16 @@ Generate ${variations} DIFFERENT variations. Each variation should:
 - Maintain the same brand voice but explore different approaches
 - Stay within the character and word limits
 
+${includeEmojis && emojiInstructions ? emojiInstructions : ''}
+
 Return ONLY the ${variations} variations, one per line, numbered 1-${variations}. No explanations or additional text.`;
 
   try {
     const response = await callClaudeForCopy(prompt, env.ANTHROPIC_API_KEY);
-    const variations = parseVariations(response);
+    const variationsArray = parseVariations(response);
 
     // Validate and format each variation
-    const results = variations.map((copyText, index) => {
+    const results = variationsArray.map((copyText, index) => {
       const validation = validateCopy(copyText, tacticId);
 
       return {
@@ -62,6 +69,70 @@ Return ONLY the ${variations} variations, one per line, numbered 1-${variations}
 }
 
 /**
+ * Generate multi-component ad copy (e.g., Facebook ad with headline, body, CTA)
+ */
+export async function generateMultiComponentAdCopy(brandProfile, tacticId, campaignObjective, env, includeEmojis, emojiInstructions) {
+  const tactic = getTactic(tacticId);
+  if (!tactic || !tactic.multiComponent) {
+    throw new Error(`Invalid multi-component tactic: ${tacticId}`);
+  }
+
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new Error('ANTHROPIC_API_KEY not configured');
+  }
+
+  // Build prompt using the tactic's template
+  const prompt = tactic.promptTemplate(brandProfile, campaignObjective, includeEmojis, emojiInstructions);
+
+  try {
+    const response = await callClaudeForCopy(prompt, env.ANTHROPIC_API_KEY, 2048); // Higher token limit for multi-component
+    const parsedData = parseJSONWithFallback(response, tactic);
+
+    // Validate each component
+    const validatedComponents = parsedData.components.map(component => {
+      const validatedVariations = component.variations.map(text => {
+        const componentDef = tactic.components.find(c => c.name === component.name);
+        const charCount = text.length;
+        const errors = [];
+
+        if (componentDef) {
+          if (componentDef.maxChars && charCount > componentDef.maxChars) {
+            errors.push(`Exceeds max ${componentDef.maxChars} characters (${charCount})`);
+          }
+          if (componentDef.minChars && charCount < componentDef.minChars) {
+            errors.push(`Below min ${componentDef.minChars} characters (${charCount})`);
+          }
+        }
+
+        return {
+          text,
+          charCount,
+          valid: errors.length === 0,
+          errors
+        };
+      });
+
+      return {
+        name: component.name,
+        variations: validatedVariations
+      };
+    });
+
+    return {
+      id: generateId(),
+      tactic: tacticId,
+      objective: campaignObjective,
+      multiComponent: true,
+      components: validatedComponents,
+      createdAt: Date.now()
+    };
+  } catch (error) {
+    console.error('Failed to generate multi-component ad copy:', error);
+    throw error;
+  }
+}
+
+/**
  * Parse multiple variations from Claude response
  */
 function parseVariations(response) {
@@ -80,9 +151,77 @@ function parseVariations(response) {
 }
 
 /**
+ * Parse JSON response with fallback to text parsing
+ */
+function parseJSONWithFallback(response, tactic) {
+  // Step 1: Clean markdown code blocks
+  let cleaned = response.trim();
+  cleaned = cleaned.replace(/^```json\s*/i, '');
+  cleaned = cleaned.replace(/^```\s*/,'');
+  cleaned = cleaned.replace(/\s*```$/,'');
+  cleaned = cleaned.trim();
+
+  // Step 2: Try JSON.parse()
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed.components && Array.isArray(parsed.components)) {
+      return parsed;
+    }
+    throw new Error('Invalid JSON structure - missing components array');
+  } catch (jsonError) {
+    console.warn('JSON parsing failed, attempting text fallback:', jsonError.message);
+
+    // Step 3: Fallback to regex-based text parsing
+    return parseStructuredText(cleaned, tactic);
+  }
+}
+
+/**
+ * Fallback parser for structured text when JSON parsing fails
+ */
+function parseStructuredText(text, tactic) {
+  const components = [];
+
+  for (const componentDef of tactic.components) {
+    const variations = [];
+
+    // Try to find section with component name
+    const sectionRegex = new RegExp(`${componentDef.name}[:\\s]*([\\s\\S]*?)(?=(?:\\n[A-Z][^:]*:|$))`, 'i');
+    const sectionMatch = text.match(sectionRegex);
+
+    if (sectionMatch && sectionMatch[1]) {
+      const sectionText = sectionMatch[1];
+
+      // Extract numbered items or quoted strings
+      const itemRegex = /(?:^\d+[\.\)]\s*["\']?(.+?)["\']?$)|(?:["'](.+?)["'])/gm;
+      let match;
+
+      while ((match = itemRegex.exec(sectionText)) && variations.length < componentDef.count) {
+        const item = (match[1] || match[2] || '').trim();
+        if (item && !item.match(/^[A-Z][a-z]+:/)) { // Skip headers
+          variations.push(item);
+        }
+      }
+    }
+
+    // If we didn't get enough variations, pad with empty strings
+    while (variations.length < componentDef.count) {
+      variations.push(`[${componentDef.name} ${variations.length + 1}]`);
+    }
+
+    components.push({
+      name: componentDef.name,
+      variations: variations.slice(0, componentDef.count)
+    });
+  }
+
+  return { components };
+}
+
+/**
  * Call Claude API for ad copy generation
  */
-async function callClaudeForCopy(prompt, apiKey) {
+async function callClaudeForCopy(prompt, apiKey, maxTokens = 512) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -92,7 +231,7 @@ async function callClaudeForCopy(prompt, apiKey) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
+      max_tokens: maxTokens,
       temperature: 0.7, // Higher temperature for creative variations
       messages: [{
         role: 'user',
