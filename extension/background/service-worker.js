@@ -3,7 +3,6 @@
  * Handles extension lifecycle, side panel management, and message routing
  */
 
-console.log('Brand Inspector service worker loaded');
 
 /**
  * Extraction state management
@@ -26,11 +25,9 @@ async function pingContentScript(tabId, retries = 5) {
         try {
             const response = await chrome.tabs.sendMessage(tabId, { action: 'PING' });
             if (response && response.ready) {
-                console.log(`Content script ready for tab ${tabId} (attempt ${i + 1})`);
                 return true;
             }
         } catch (error) {
-            console.log(`Ping attempt ${i + 1}/${retries} failed for tab ${tabId}, retrying...`);
             // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms
             await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, i)));
         }
@@ -43,11 +40,9 @@ async function pingContentScript(tabId, retries = 5) {
  * Installation handler
  */
 chrome.runtime.onInstalled.addListener((details) => {
-    console.log('Extension installed:', details.reason);
 
     if (details.reason === 'install') {
         // First-time installation
-        console.log('Welcome to Brand Inspector!');
 
         // Initialize storage with default values
         chrome.storage.local.set({
@@ -68,7 +63,6 @@ chrome.runtime.onInstalled.addListener((details) => {
         // chrome.tabs.create({ url: 'welcome.html' });
     } else if (details.reason === 'update') {
         // Extension updated
-        console.log('Extension updated to version', chrome.runtime.getManifest().version);
     }
 });
 
@@ -76,7 +70,6 @@ chrome.runtime.onInstalled.addListener((details) => {
  * Extension icon click handler - opens side panel
  */
 chrome.action.onClicked.addListener(async (tab) => {
-    console.log('Extension icon clicked, opening side panel');
 
     // Open side panel for this tab
     chrome.sidePanel.open({ tabId: tab.id }).catch(err => {
@@ -92,7 +85,6 @@ chrome.action.onClicked.addListener(async (tab) => {
 
                 // Extract if different URL or no previous data
                 if (!previousUrl || previousUrl !== tab.url) {
-                    console.log('Side panel opened, triggering extraction for:', tab.url);
                     const sameSite = isSameSite(previousUrl, tab.url);
                     await extractBrandData(tab.id, tab.url, !sameSite);
                 }
@@ -105,7 +97,6 @@ chrome.action.onClicked.addListener(async (tab) => {
  * Keyboard command handler
  */
 chrome.commands.onCommand.addListener((command) => {
-    console.log('Command triggered:', command);
 
     // Get current tab
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -143,7 +134,6 @@ chrome.commands.onCommand.addListener((command) => {
 
         // Open side panel if not already open
         chrome.sidePanel.open({ tabId: tab.id }).catch(err => {
-            console.log('Side panel already open or failed to open:', err);
         });
     });
 });
@@ -152,7 +142,6 @@ chrome.commands.onCommand.addListener((command) => {
  * Message routing between content scripts and side panel
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Service worker received message:', message.action, 'from', sender.tab?.id || 'side panel');
 
     switch (message.action) {
         case 'BRAND_EXTRACTED':
@@ -198,7 +187,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             break;
 
         case 'INSPECTOR_ACTIVATED':
-            console.log('Inspector activated:', message.mode);
             sendResponse({ received: true });
             break;
 
@@ -247,7 +235,6 @@ async function forwardToSidePanel(message, tabId) {
             }
         });
 
-        console.log('Message stored for side panel');
     } catch (error) {
         console.error('Failed to forward message to side panel:', error);
     }
@@ -261,13 +248,11 @@ async function extractBrandData(tabId, url, isFullExtraction = true, bypassDupli
 
     // Check for duplicate extraction (within 2 seconds, unless bypassed)
     if (!bypassDuplicateCheck && state.url === url && state.timestamp && (Date.now() - state.timestamp < 2000)) {
-        console.log('Skipping duplicate extraction for:', url, '(within 2s)');
         return;
     }
 
     // Check if already extracting
     if (state.state === ExtractionStates.EXTRACTING) {
-        console.log('Extraction already in progress for tab:', tabId);
         return;
     }
 
@@ -327,7 +312,6 @@ async function extractBrandData(tabId, url, isFullExtraction = true, bypassDupli
             });
         });
 
-        console.log(`Extraction request sent for: ${url}`);
 
     } catch (error) {
         console.error('Extraction failed:', error);
@@ -363,7 +347,11 @@ let navigationTimeouts = new Map();
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === 'complete' && tab.url) {
-        console.log('Page loaded:', tab.url);
+
+        // Check if URL is valid HTTP(S) - skip chrome:// and other internal pages
+        if (!tab.url || !/^https?:\/\//.test(tab.url)) {
+            return;
+        }
 
         // Clear any pending timeout for this tab
         if (navigationTimeouts.has(tabId)) {
@@ -394,14 +382,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
  * Tab activation handler - update side panel context and trigger extraction
  */
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    console.log('Tab activated:', activeInfo.tabId);
 
     try {
         const tab = await chrome.tabs.get(activeInfo.tabId);
 
         // Check if URL is valid HTTP(S)
         if (!tab.url || !/^https?:\/\//.test(tab.url)) {
-            console.log('Skipping non-HTTP(S) tab:', tab.url);
             return;
         }
 
@@ -415,7 +401,6 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
         // Skip if auto-extract is disabled
         if (result.settings?.autoExtract === false) {
-            console.log('Auto-extract disabled, skipping extraction');
             return;
         }
 
@@ -436,7 +421,6 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
  * Handle extension updates
  */
 chrome.runtime.onUpdateAvailable.addListener((details) => {
-    console.log('Update available:', details.version);
 
     // Optional: Auto-reload extension
     // chrome.runtime.reload();
@@ -469,4 +453,3 @@ function keepAlive() {
 // Uncomment if you need to keep service worker alive
 // keepAlive();
 
-console.log('Brand Inspector service worker ready');

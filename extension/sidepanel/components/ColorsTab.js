@@ -32,9 +32,8 @@ class ColorsTab {
         controls.innerHTML = `
             <div class="colors-header">
                 <h3 class="colors-count" data-count="0">Colors</h3>
-                <button class="add-color-btn" title="Add custom color">
-                    <i data-lucide="plus" class="icon-sm"></i>
-                    Add Color
+                <button class="copy-all-btn" id="copy-all-colors-btn" title="Copy all colors">
+                    <i data-lucide="copy" class="icon-sm"></i>
                 </button>
             </div>
         `;
@@ -45,11 +44,6 @@ class ColorsTab {
 
         // Hide controls initially
         controls.style.display = 'none';
-
-        // Setup event listeners
-        controls.querySelector('.add-color-btn').addEventListener('click', () => {
-            this.openColorPicker();
-        });
 
         // Initialize icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -210,7 +204,6 @@ class ColorsTab {
     async copyColorToClipboard(hex, button) {
         try {
             await navigator.clipboard.writeText(hex);
-            console.log(`Copied ${hex} to clipboard`);
 
             // Visual feedback - simple approach
             if (button) {
@@ -244,14 +237,6 @@ class ColorsTab {
     deleteColor(color) {
         // Dispatch event to parent controller
         window.dispatchEvent(new CustomEvent('deleteColor', { detail: color }));
-    }
-
-    /**
-     * Open color picker to add custom color
-     */
-    openColorPicker() {
-        // Dispatch event to activate inspector in color mode
-        window.dispatchEvent(new CustomEvent('activateColorPicker'));
     }
 
     /**

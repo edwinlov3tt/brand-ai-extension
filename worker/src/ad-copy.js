@@ -7,7 +7,7 @@ import { getTactic, validateCopy } from './tactics.js';
 /**
  * Generate ad copy variations (single component tactics)
  */
-export async function generateAdCopy(brandProfile, tacticId, campaignObjective, variations, env, includeEmojis, emojiInstructions) {
+export async function generateAdCopy(brandProfile, tacticId, campaignObjective, variations, env, includeEmojis, emojiInstructions, pageContext) {
   const tactic = getTactic(tacticId);
   if (!tactic) {
     throw new Error(`Invalid tactic: ${tacticId}`);
@@ -15,7 +15,7 @@ export async function generateAdCopy(brandProfile, tacticId, campaignObjective, 
 
   // Check if this is a multi-component tactic
   if (tactic.multiComponent) {
-    return await generateMultiComponentAdCopy(brandProfile, tacticId, campaignObjective, env, includeEmojis, emojiInstructions);
+    return await generateMultiComponentAdCopy(brandProfile, tacticId, campaignObjective, env, includeEmojis, emojiInstructions, pageContext);
   }
 
   if (!env.ANTHROPIC_API_KEY) {
@@ -24,8 +24,26 @@ export async function generateAdCopy(brandProfile, tacticId, campaignObjective, 
 
   // Build prompt that requests multiple variations
   const basePrompt = tactic.promptTemplate(brandProfile, campaignObjective);
-  const prompt = `${basePrompt}
 
+  // Add page context if provided
+  let pageContextSection = '';
+  if (pageContext) {
+    pageContextSection = `
+SPECIFIC PRODUCT/SERVICE CONTEXT:
+${pageContext.title ? `- Product/Service: ${pageContext.title}` : ''}
+${pageContext.type ? `- Type: ${pageContext.type}` : ''}
+${pageContext.summary ? `- Summary: ${pageContext.summary}` : ''}
+${pageContext.valuePropositions && pageContext.valuePropositions.length > 0 ? `- Value Propositions: ${pageContext.valuePropositions.join(', ')}` : ''}
+${pageContext.features && pageContext.features.length > 0 ? `- Features: ${pageContext.features.join(', ')}` : ''}
+${pageContext.benefits && pageContext.benefits.length > 0 ? `- Benefits: ${pageContext.benefits.join(', ')}` : ''}
+${pageContext.targetAudience ? `- Target Audience: ${pageContext.targetAudience}` : ''}
+
+IMPORTANT: Focus this ad copy specifically on the above product/service, not just the general brand.
+`;
+  }
+
+  const prompt = `${basePrompt}
+${pageContextSection}
 Generate ${variations} DIFFERENT variations. Each variation should:
 - Use different wording, angles, and hooks
 - Vary the emotional appeal (urgency, curiosity, benefit, social proof, etc.)
@@ -71,7 +89,7 @@ Return ONLY the ${variations} variations, one per line, numbered 1-${variations}
 /**
  * Generate multi-component ad copy (e.g., Facebook ad with headline, body, CTA)
  */
-export async function generateMultiComponentAdCopy(brandProfile, tacticId, campaignObjective, env, includeEmojis, emojiInstructions) {
+export async function generateMultiComponentAdCopy(brandProfile, tacticId, campaignObjective, env, includeEmojis, emojiInstructions, pageContext) {
   const tactic = getTactic(tacticId);
   if (!tactic || !tactic.multiComponent) {
     throw new Error(`Invalid multi-component tactic: ${tacticId}`);
@@ -82,7 +100,33 @@ export async function generateMultiComponentAdCopy(brandProfile, tacticId, campa
   }
 
   // Build prompt using the tactic's template
-  const prompt = tactic.promptTemplate(brandProfile, campaignObjective, includeEmojis, emojiInstructions);
+  let prompt = tactic.promptTemplate(brandProfile, campaignObjective, includeEmojis, emojiInstructions);
+
+  // Add page context if provided
+  if (pageContext) {
+    const pageContextSection = `
+
+SPECIFIC PRODUCT/SERVICE CONTEXT:
+${pageContext.title ? `- Product/Service: ${pageContext.title}` : ''}
+${pageContext.type ? `- Type: ${pageContext.type}` : ''}
+${pageContext.summary ? `- Summary: ${pageContext.summary}` : ''}
+${pageContext.valuePropositions && pageContext.valuePropositions.length > 0 ? `- Value Propositions: ${pageContext.valuePropositions.join(', ')}` : ''}
+${pageContext.features && pageContext.features.length > 0 ? `- Features: ${pageContext.features.join(', ')}` : ''}
+${pageContext.benefits && pageContext.benefits.length > 0 ? `- Benefits: ${pageContext.benefits.join(', ')}` : ''}
+${pageContext.targetAudience ? `- Target Audience: ${pageContext.targetAudience}` : ''}
+
+IMPORTANT: Focus this ad copy specifically on the above product/service, not just the general brand.
+`;
+
+    // Insert page context before the JSON format instructions
+    // (usually at the end of multi-component prompts)
+    const jsonInstructionIndex = prompt.indexOf('Return your response');
+    if (jsonInstructionIndex > 0) {
+      prompt = prompt.slice(0, jsonInstructionIndex) + pageContextSection + '\n' + prompt.slice(jsonInstructionIndex);
+    } else {
+      prompt = prompt + pageContextSection;
+    }
+  }
 
   try {
     const response = await callClaudeForCopy(prompt, env.ANTHROPIC_API_KEY, 2048); // Higher token limit for multi-component

@@ -7,14 +7,13 @@
 if (!window.__BRAND_INSPECTOR_LOADED__) {
     window.__BRAND_INSPECTOR_LOADED__ = true;
 
-    console.log('Brand Inspector content script loaded');
-
     class BrandInspectorContent {
         constructor() {
             this.inspectorActive = false;
             this.currentMode = null;
             this.overlay = null;
             this.tooltip = null;
+            this.analysisAborted = false; // Flag to stop ongoing analysis
 
             this.init();
         }
@@ -35,16 +34,12 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                     this.deactivateInspector();
                 }
             });
-
-            console.log('Brand Inspector content script initialized');
         }
 
         /**
          * Handle incoming messages
          */
         handleMessage(message, sender, sendResponse) {
-            console.log('Content script received message:', message.action);
-
             switch (message.action) {
                 case 'PING':
                     sendResponse({ ready: true });
@@ -58,6 +53,11 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 case 'DEACTIVATE_INSPECTOR':
                     this.deactivateInspector();
                     sendResponse({ deactivated: true });
+                    break;
+
+                case 'STOP_ANALYSIS':
+                    this.stopAnalysis();
+                    sendResponse({ stopped: true });
                     break;
 
                 case 'EXTRACT_BRAND_DATA':
@@ -87,8 +87,12 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                     sendResponse({ content });
                     break;
 
+                case 'extractPageContent':
+                    const pageData = this.extractPageContent();
+                    sendResponse(pageData);
+                    break;
+
                 default:
-                    console.warn('Unknown message action:', message.action);
                     sendResponse({ error: 'Unknown action' });
             }
         }
@@ -97,8 +101,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
          * Activate inspector mode
          */
         activateInspector(mode) {
-            console.log(`Activating inspector in ${mode} mode`);
-
             this.inspectorActive = true;
             this.currentMode = mode;
 
@@ -124,8 +126,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
          * Deactivate inspector mode
          */
         deactivateInspector() {
-            console.log('Deactivating inspector');
-
             this.inspectorActive = false;
             this.currentMode = null;
 
@@ -151,6 +151,14 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
             chrome.runtime.sendMessage({
                 action: 'INSPECTOR_DEACTIVATED'
             });
+        }
+
+        /**
+         * Stop all ongoing analysis
+         */
+        stopAnalysis() {
+            this.analysisAborted = true;
+            this.deactivateInspector();
         }
 
         /**
@@ -368,11 +376,18 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
          * Extract brand data from page
          */
         async extractBrandData() {
-            console.log('Extracting brand data from page...');
+            // Reset abort flag when starting new analysis
+            this.analysisAborted = false;
+
+            // Check if analysis was aborted
+            if (this.analysisAborted) return null;
 
             // Extract assets using AssetExtractor
             const assetExtractor = new AssetExtractor();
             const assets = await assetExtractor.extractAssets(document);
+
+            // Check again after async operation
+            if (this.analysisAborted) return null;
 
             const data = {
                 colors: this.extractColors(),
@@ -380,6 +395,9 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 assets: assets, // Add extracted assets
                 metadata: this.extractMetadata()
             };
+
+            // Check before sending
+            if (this.analysisAborted) return null;
 
             // Send to service worker
             chrome.runtime.sendMessage({
@@ -395,7 +413,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
          * Much faster than full extraction (~50ms vs ~200ms)
          */
         async extractMetadataOnly() {
-            console.log('Extracting metadata only (incremental update)...');
 
             const data = {
                 metadata: this.extractMetadata()
@@ -743,7 +760,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 THEME_COLOR_BLOCKLIST.elementor.forEach(color => {
                     frameworkColors.add(color.toLowerCase());
                 });
-                console.log('Elementor site detected - filtering theme default colors');
             }
 
             // Calculate total weight for coverage percentage
@@ -784,11 +800,9 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                         data.usedIn.has('header') ||
                         data.usedIn.has('hero') ||
                         coverage >= 0.05) {
-                        console.log(`Keeping framework color ${hex} - legitimate brand usage (count: ${data.count}, coverage: ${(coverage * 100).toFixed(1)}%)`);
                         return true;
                     }
 
-                    console.log(`Filtered framework theme color ${hex} - likely boilerplate (count: ${data.count}, coverage: ${(coverage * 100).toFixed(1)}%)`);
                     return false;
                 }
 
@@ -870,7 +884,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                                     if (googleFontMatch) {
                                         const fontUrl = googleFontMatch[1];
                                         fontFaceUrls.set(familyName, fontUrl);
-                                        console.log(`[Google Fonts] @font-face found: "${familyName}" -> ${fontUrl}`);
                                     }
                                 }
                             }
@@ -891,13 +904,9 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                     const encodedFamily = family.replace(/ /g, '+');
                     const generatedUrl = `https://fonts.googleapis.com/css2?family=${encodedFamily}`;
                     fontLinks.set(family, generatedUrl);
-                    console.log(`[Google Fonts] Generated URL for @font-face: "${family}" -> ${generatedUrl}`);
                 }
             }
 
-            console.log(`[Google Fonts] Total URLs found: ${allGoogleFontsUrls.length}`);
-            console.log(`[Google Fonts] Font-face declarations: ${fontFaceUrls.size}`);
-            console.log(`[Google Fonts] Mapped font families:`, Array.from(fontLinks.keys()));
 
             return fontLinks;
         }
@@ -930,7 +939,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
 
                             if (familyName) {
                                 fontLinks.set(familyName, href);
-                                console.log(`[Google Fonts] Found: "${familyName}" -> ${href}`);
                             }
                         });
                     });
@@ -1024,13 +1032,11 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 // Exact match
                 if (googleFontsLinks.has(family)) {
                     fontUrl = googleFontsLinks.get(family);
-                    console.log(`[Font Match] Exact match: "${family}" -> ${fontUrl}`);
                 } else {
                     // Try case-insensitive match
                     for (const [linkFamily, url] of googleFontsLinks.entries()) {
                         if (linkFamily.toLowerCase() === family.toLowerCase()) {
                             fontUrl = url;
-                            console.log(`[Font Match] Case-insensitive match: "${family}" matched "${linkFamily}" -> ${fontUrl}`);
                             break;
                         }
                     }
@@ -1041,14 +1047,12 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                             if (family.toLowerCase().includes(linkFamily.toLowerCase()) ||
                                 linkFamily.toLowerCase().includes(family.toLowerCase())) {
                                 fontUrl = url;
-                                console.log(`[Font Match] Partial match: "${family}" matched "${linkFamily}" -> ${fontUrl}`);
                                 break;
                             }
                         }
                     }
 
                     if (!fontUrl) {
-                        console.log(`[Font Match] No match found for: "${family}"`);
                     }
                 }
 
@@ -1078,7 +1082,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 ...googleFonts
             ].slice(0, 10);
 
-            console.log(`[Font Export] Returning ${selectedFonts.length} fonts (${googleFonts.length} Google Fonts)`);
 
             return selectedFonts;
         }
@@ -1088,7 +1091,6 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
          * Returns all necessary data for LLM analysis
          */
         extractPageContentForProfile() {
-            console.log('Extracting page content for profile generation');
 
             // Get domain and URL
             const domain = window.location.hostname;
@@ -1122,6 +1124,44 @@ if (!window.__BRAND_INSPECTOR_LOADED__) {
                 text,
                 headings,
                 metadata
+            };
+        }
+
+        /**
+         * Extract page content for saving as product/service
+         * Returns metadata and full text content for AI summary generation
+         */
+        extractPageContent() {
+
+            // Get title
+            const title = document.title;
+
+            // Get description from meta tag
+            const descriptionMeta = document.querySelector('meta[name="description"], meta[property="og:description"]');
+            const description = descriptionMeta ? descriptionMeta.getAttribute('content') : '';
+
+            // Get meta image (og:image or twitter:image)
+            const metaImageEl = document.querySelector('meta[property="og:image"], meta[name="twitter:image"]');
+            const metaImage = metaImageEl ? metaImageEl.getAttribute('content') : '';
+
+            // Get main page text content (combine visible text)
+            const bodyText = document.body.innerText || document.body.textContent || '';
+
+            // Extract main content (try to exclude header/footer/sidebar)
+            let pageContent = bodyText;
+            const mainContent = document.querySelector('main, article, [role="main"], .main-content, #main-content, #content');
+            if (mainContent) {
+                pageContent = mainContent.innerText || mainContent.textContent || bodyText;
+            }
+
+            // Limit to 50,000 characters to avoid token limits
+            pageContent = pageContent.substring(0, 50000);
+
+            return {
+                title: title || '',
+                description: description || '',
+                metaImage: metaImage || '',
+                pageContent: pageContent
             };
         }
 

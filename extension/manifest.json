@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Brand Inspector",
-  "version": "1.0.0",
-  "description": "Extract and analyze brand assets (colors, fonts, logos) from any website. Sync to your web app for ad creation.",
+  "name": "Brand AI Inspector",
+  "version": "1.1.0",
+  "description": "AI-powered brand analysis tool. Extract brand assets, save product pages, generate AI brand profiles, and create ad copy.",
   "icons": {
     "16": "assets/icons/icon16.png",
     "48": "assets/icons/icon48.png",
@@ -33,7 +33,7 @@
     "default_path": "sidepanel/sidepanel.html"
   },
   "action": {
-    "default_title": "Open Brand Inspector",
+    "default_title": "Open Brand AI Inspector",
     "default_icon": {
       "16": "assets/icons/icon16.png",
       "48": "assets/icons/icon48.png",
@@ -75,7 +75,10 @@
       "resources": [
         "content/inspector.js",
         "content/extractor.js",
-        "content/content.css"
+        "content/content.css",
+        "management/assets/metronic/keenicons/fonts/*.ttf",
+        "management/assets/metronic/keenicons/fonts/*.woff",
+        "management/assets/metronic/keenicons/fonts/*.svg"
       ],
       "matches": ["http://*/*", "https://*/*"]
     }

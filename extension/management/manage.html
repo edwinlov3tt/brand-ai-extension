@@ -1,31 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-kt-theme-mode="dark" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brand Profile Manager</title>
+
+    <!-- KeenIcons Font -->
+    <link href="assets/metronic/keenicons/styles.bundle.css" rel="stylesheet" type="text/css"/>
+
+    <!-- Metronic Core Styles -->
+    <link href="assets/metronic/css/styles.css" rel="stylesheet" type="text/css"/>
+
+    <!-- Dark Theme Override -->
+    <link href="assets/css/dark-theme-override.css" rel="stylesheet" type="text/css"/>
+
+    <!-- Application Styles -->
     <link rel="stylesheet" href="manage.css">
 </head>
 <body>
-    <!-- Header -->
-    <header class="app-header">
-        <div class="header-left">
-            <h1 class="app-title">Brand Profile Manager</h1>
-            <div class="brand-selector" id="brand-selector">
-                <select id="brand-dropdown" class="brand-dropdown">
-                    <option value="">Select a brand...</option>
-                </select>
-            </div>
-        </div>
-        <div class="header-right">
-            <button class="btn-secondary" id="edit-brand-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                Edit Brand
-            </button>
-        </div>
-    </header>
+    <!-- Sidebar Navigation -->
+    <aside class="kt-sidebar" id="kt-sidebar">
+        <nav class="kt-sidebar-nav">
+            <a href="#" class="kt-sidebar-nav-item active" data-page="tactics" title="Tactics" id="nav-tactics">
+                <i class="ki-outline ki-note-2 fs-2"></i>
+                <span class="kt-sidebar-nav-label">Tactics</span>
+            </a>
+            <a href="#" class="kt-sidebar-nav-item" data-page="pages" title="Pages" id="nav-pages">
+                <i class="ki-outline ki-document fs-2"></i>
+                <span class="kt-sidebar-nav-label">Pages</span>
+            </a>
+            <a href="#" class="kt-sidebar-nav-item" data-page="history" title="History" id="nav-history">
+                <i class="ki-outline ki-time fs-2"></i>
+                <span class="kt-sidebar-nav-label">History</span>
+            </a>
+            <a href="#" class="kt-sidebar-nav-item" data-page="profile" title="Profile" id="nav-profile">
+                <i class="ki-outline ki-user fs-2"></i>
+                <span class="kt-sidebar-nav-label">Profile</span>
+            </a>
+        </nav>
+    </aside>
 
-    <!-- Main Container -->
+    <!-- Main Container with Sidebar Offset -->
+    <div class="app-wrapper">
+        <!-- Top Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1 class="app-title">Brand Profile Manager</h1>
+                <div class="brand-selector" id="brand-selector">
+                    <select id="brand-dropdown" class="brand-dropdown">
+                        <option value="">Select a brand...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-secondary" id="edit-brand-btn">
+                    <i class="ki-outline ki-pencil"></i>
+                    Edit Brand
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Container -->
     <main class="main-container">
         <!-- Empty State -->
         <div class="empty-state" id="empty-state">
@@ -36,30 +71,178 @@
 
         <!-- Content Area -->
         <div class="content-area hidden" id="content-area">
-            <!-- Tactics Grid -->
-            <section class="tactics-section">
-                <h2 class="section-title">Ad Copy Generators</h2>
-                <div class="tactics-grid" id="tactics-grid">
-                    <!-- Tactic cards will be inserted here -->
-                </div>
-            </section>
+            <!-- TACTICS PAGE -->
+            <div class="page-view" id="page-tactics">
+                <section class="tactics-section" id="tactics-section">
+                    <h2 class="section-title">All Ad Copy Generators</h2>
 
-            <!-- Ad Copy History -->
-            <section class="history-section">
-                <div class="history-header">
-                    <h2 class="section-title">Generated Ad Copy</h2>
+                    <!-- Platform Filters -->
+                    <div class="platform-filters" id="platform-filters">
+                        <button class="platform-chip active" data-platform="all">All</button>
+                        <button class="platform-chip" data-platform="google">Google</button>
+                        <button class="platform-chip" data-platform="facebook">Facebook</button>
+                        <button class="platform-chip" data-platform="instagram">Instagram</button>
+                        <button class="platform-chip" data-platform="twitter">Twitter</button>
+                        <button class="platform-chip" data-platform="tiktok">TikTok</button>
+                        <button class="platform-chip" data-platform="snapchat">Snapchat</button>
+                        <button class="platform-chip" data-platform="linkedin">LinkedIn</button>
+                        <button class="platform-chip" data-platform="pinterest">Pinterest</button>
+                        <button class="platform-chip" data-platform="nextdoor">Nextdoor</button>
+                        <button class="platform-chip" data-platform="email">Email</button>
+                        <button class="platform-chip" data-platform="native">Native</button>
+                    </div>
+
+                    <div class="tactics-grid" id="tactics-grid">
+                        <!-- All tactic cards will be inserted here -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- PAGES PAGE -->
+            <div class="page-view hidden" id="page-pages">
+                <h2 class="section-title">Saved Products & Services</h2>
+                <div class="pages-grid" id="pages-grid">
+                    <p class="history-empty">No pages saved yet. Save pages from the extension to see them here.</p>
+                </div>
+            </div>
+
+            <!-- HISTORY PAGE -->
+            <div class="page-view hidden" id="page-history">
+                <section class="history-section-page">
+                    <h2 class="section-title">Generated Ad Copy History</h2>
                     <div class="history-filters">
-                        <select id="tactic-filter" class="filter-select">
+                        <select id="history-tactic-filter" class="filter-select">
                             <option value="">All Tactics</option>
                         </select>
                     </div>
+                    <div class="history-list" id="history-page-list">
+                        <p class="history-empty">No ad copy generated yet.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PROFILE PAGE -->
+            <div class="page-view hidden" id="page-profile">
+                <h2 class="section-title">Brand Profile</h2>
+                <div id="profile-brand-details">
+                    <!-- Brand profile details will be inserted here -->
                 </div>
-                <div class="history-list" id="history-list">
-                    <p class="history-empty">No ad copy generated yet. Start by selecting a tactic above.</p>
+            </div>
+
+            <!-- Inline Generation View (replaces modal) -->
+            <section class="inline-generation-view hidden" id="inline-generation-view">
+                <div class="generation-header">
+                    <div class="generation-title">
+                        <button class="back-btn" id="back-to-tactics-btn">
+                            <i class="ki-outline ki-left fs-2"></i>
+                        </button>
+                        <h2 class="section-title" id="generation-tactic-title">Generate Ad Copy</h2>
+                    </div>
+                    <button class="btn-secondary" id="close-generation-btn">
+                        <i class="ki-outline ki-cross fs-3"></i>
+                        Close
+                    </button>
+                </div>
+
+                <div class="generation-split-view">
+                    <!-- Left Panel: Form -->
+                    <div class="generation-form-panel">
+                        <!-- Campaign Objective -->
+                        <div class="form-group">
+                            <label for="inline-tactic-objective" class="form-label required">
+                                Campaign Objective
+                            </label>
+                            <textarea
+                                id="inline-tactic-objective"
+                                class="modern-textarea"
+                                placeholder="e.g. Increase demo signups, promote new product launch..."
+                                rows="6"
+                            ></textarea>
+                            <div class="char-counter">
+                                <span id="objective-char-count">0</span>/10000
+                            </div>
+                        </div>
+
+                        <!-- Product/Service -->
+                        <div class="form-group">
+                            <label for="inline-page-select" class="form-label">
+                                Product / Service
+                            </label>
+                            <select id="inline-page-select" class="modern-select">
+                                <option value="">None - Use general brand profile</option>
+                            </select>
+                        </div>
+
+                        <!-- Output Settings Section (Collapsible) -->
+                        <div class="settings-section">
+                            <button type="button" class="settings-section-header collapsed" id="output-settings-header">
+                                <div class="settings-section-title">
+                                    <span class="settings-section-name">Output Settings</span>
+                                    <span class="settings-section-desc">Format & Quantity</span>
+                                </div>
+                                <div class="settings-section-meta">
+                                    <span class="settings-section-value">3 variations</span>
+                                    <i class="ki-outline ki-down fs-4 collapse-icon"></i>
+                                </div>
+                            </button>
+                            <div class="settings-section-content hidden" id="output-settings-content">
+                                <!-- Include Emojis -->
+                                <div class="settings-item">
+                                    <label class="settings-item-label">
+                                        <i class="ki-outline ki-abstract-26 fs-5"></i>
+                                        <span>Use Emojis</span>
+                                    </label>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="emoji-toggle-checkbox">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+
+                                <!-- Number of Variations -->
+                                <div class="settings-item">
+                                    <label class="settings-item-label">
+                                        <i class="ki-outline ki-copy fs-5"></i>
+                                        <span>Number of Variants</span>
+                                    </label>
+                                    <div class="number-control">
+                                        <button type="button" class="number-btn" id="inline-decrease-variations">
+                                            <i class="ki-outline ki-minus fs-5"></i>
+                                        </button>
+                                        <input
+                                            type="number"
+                                            id="inline-tactic-variations"
+                                            class="number-input"
+                                            value="3"
+                                            min="1"
+                                            max="10"
+                                            readonly
+                                        >
+                                        <button type="button" class="number-btn" id="inline-increase-variations">
+                                            <i class="ki-outline ki-plus fs-5"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <button class="modern-btn-primary" id="inline-generate-btn">
+                            Generate
+                        </button>
+                    </div>
+
+                    <!-- Right Panel: Results -->
+                    <div class="generation-results-panel" id="inline-results-panel">
+                        <div class="results-empty">
+                            <i class="ki-outline ki-message-text fs-3tx text-muted-foreground"></i>
+                            <p>Generate ad copy to see results here</p>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
     </main>
+    </div><!-- End .app-wrapper -->
 
     <!-- Brand Settings Modal -->
     <div class="modal-overlay hidden" id="brand-modal-overlay">
@@ -84,9 +267,12 @@
     <div class="modal-overlay hidden" id="tactic-modal-overlay">
         <div class="modal-container modal-large">
             <div class="modal-header">
-                <h2 id="tactic-modal-title">Generate Ad Copy</h2>
+                <h2 id="tactic-modal-title">
+                    <i class="ki-outline ki-note-2 fs-2"></i>
+                    Generate Ad Copy
+                </h2>
                 <button class="modal-close-btn" id="tactic-modal-close-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    <i class="ki-outline ki-cross fs-1"></i>
                 </button>
             </div>
             <div class="modal-body tactic-modal-body">
@@ -94,23 +280,40 @@
                     <!-- Left Side: Form -->
                     <div class="tactic-form-panel">
                         <div class="form-group">
-                            <label for="tactic-objective">Campaign Objective</label>
-                            <textarea id="tactic-objective" class="form-textarea" placeholder="E.g., Increase demo signups" rows="3"></textarea>
+                            <label for="tactic-objective" class="form-label">
+                                <i class="ki-outline ki-rocket fs-5"></i>
+                                Campaign Objective
+                            </label>
+                            <textarea id="tactic-objective" class="kt-input form-textarea" placeholder="E.g., Increase demo signups, promote new product launch..." rows="4"></textarea>
+                            <span class="form-hint">Describe what you want to achieve with this campaign</span>
                         </div>
+
                         <div class="form-group">
-                            <label for="tactic-variations">Variations</label>
-                            <select id="tactic-variations" class="form-select">
-                                <option value="3">3 variations</option>
-                                <option value="5">5 variations</option>
-                            </select>
+                            <label for="tactic-variations" class="form-label">
+                                <i class="ki-outline ki-copy fs-5"></i>
+                                Number of Variations
+                            </label>
+                            <div class="number-stepper">
+                                <button type="button" class="stepper-btn stepper-decrease" id="decrease-variations">
+                                    <i class="ki-outline ki-minus fs-3"></i>
+                                </button>
+                                <input type="number" id="tactic-variations" class="kt-input stepper-input" value="3" min="1" max="10" readonly>
+                                <button type="button" class="stepper-btn stepper-increase" id="increase-variations">
+                                    <i class="ki-outline ki-plus fs-3"></i>
+                                </button>
+                            </div>
                         </div>
-                        <button class="btn-primary btn-block" id="generate-tactic-btn">Generate Ad Copy</button>
+
+                        <button class="kt-btn-primary btn-block" id="generate-tactic-btn">
+                            <i class="ki-outline ki-flash-circle fs-2"></i>
+                            Generate Ad Copy
+                        </button>
                     </div>
 
                     <!-- Right Side: Results -->
                     <div class="tactic-results-panel" id="tactic-results-panel">
                         <div class="results-empty">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <i class="ki-outline ki-message-text fs-3tx text-muted-foreground"></i>
                             <p>Generate ad copy to see results here</p>
                         </div>
                     </div>
@@ -125,11 +328,20 @@
         <p class="loading-text">Generating...</p>
     </div>
 
-    <!-- Scripts -->
+    <!-- Theme Initialization -->
+    <script src="theme-init.js"></script>
+
+    <!-- Form Controls -->
+    <script src="form-controls.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="components/PageNavigation.js"></script>
     <script src="components/BrandSelector.js"></script>
     <script src="components/TacticCard.js"></script>
     <script src="components/TacticGrid.js"></script>
     <script src="components/AdCopyHistory.js"></script>
+    <script src="components/PagesView.js"></script>
+    <script src="components/PageEditModal.js"></script>
     <script src="components/BrandModal.js"></script>
     <script src="manage.js"></script>
 </body>

@@ -21,6 +21,17 @@
             <button class="icon-btn reanalyze-btn" id="reanalyze-btn" title="Reanalyze current page">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
             </button>
+            <div class="header-menu">
+                <button class="icon-btn" id="menu-btn" title="More options">
+                    <i data-lucide="more-vertical" class="icon-sm"></i>
+                </button>
+                <div class="menu-dropdown hidden" id="menu-dropdown">
+                    <button class="menu-item" id="export-json-btn">
+                        <i data-lucide="download" class="icon-xs"></i>
+                        Export JSON
+                    </button>
+                </div>
+            </div>
             <div class="status-indicator" id="status-indicator">
                 <span class="status-dot"></span>
             </div>
@@ -45,6 +56,10 @@
             <i data-lucide="image" class="btn-icon"></i>
             <span class="btn-label">Assets</span>
         </button>
+        <button class="tab-button" data-tab="pages" title="Pages">
+            <i data-lucide="file-text" class="btn-icon"></i>
+            <span class="btn-label">Pages</span>
+        </button>
         <button class="tab-button" data-tab="profile" title="Profile">
             <i data-lucide="user" class="btn-icon"></i>
             <span class="btn-label">Profile</span>
@@ -65,7 +80,12 @@
             <div class="overview-content hidden" id="overview-content">
                 <!-- Brand Snapshot Section -->
                 <section class="overview-section" id="brand-snapshot-section">
-                    <h3 class="section-title">Brand Snapshot</h3>
+                    <div class="section-title-row">
+                        <h3 class="section-title">Brand Snapshot</h3>
+                        <button class="copy-section-btn" data-section="meta-image" title="Copy meta image URL">
+                            <i data-lucide="copy" class="icon-sm"></i>
+                        </button>
+                    </div>
                     <div class="brand-snapshot">
                         <!-- Meta Image -->
                         <div class="snapshot-meta-image" id="meta-image-container">
@@ -88,6 +108,12 @@
 
                 <!-- Logo & Favicon Section -->
                 <section class="overview-section" id="logo-favicon-section">
+                    <div class="section-title-row">
+                        <h3 class="section-title">Logo & Favicon</h3>
+                        <button class="copy-section-btn" data-section="logos" title="Copy logo URLs">
+                            <i data-lucide="copy" class="icon-sm"></i>
+                        </button>
+                    </div>
                     <div class="logo-favicon-grid">
                         <div class="asset-item">
                             <label>Logo</label>
@@ -110,16 +136,47 @@
 
                 <!-- Color Palette Section -->
                 <section class="overview-section">
-                    <h3 class="section-title">Color Palette</h3>
+                    <div class="section-title-row">
+                        <h3 class="section-title">Color Palette</h3>
+                        <button class="copy-section-btn" data-section="colors" title="Copy all colors">
+                            <i data-lucide="copy" class="icon-sm"></i>
+                        </button>
+                    </div>
                     <div class="color-palette-preview" id="overview-colors">
                         <!-- Color swatches will be inserted here -->
                     </div>
                     <button class="show-all-btn" data-expand="colors">Show all colors →</button>
                 </section>
 
+                <!-- Typography Section -->
+                <section class="overview-section">
+                    <div class="section-title-row">
+                        <h3 class="section-title">Typography</h3>
+                        <button class="copy-section-btn" data-section="typography" title="Copy font info">
+                            <i data-lucide="copy" class="icon-sm"></i>
+                        </button>
+                    </div>
+                    <div class="typography-preview">
+                        <div class="font-item">
+                            <label>Display Font</label>
+                            <div class="font-sample" id="overview-display-font">-</div>
+                        </div>
+                        <div class="font-item">
+                            <label>Body Font</label>
+                            <div class="font-sample" id="overview-body-font">-</div>
+                        </div>
+                    </div>
+                    <button class="show-all-btn" data-expand="fonts">Show all fonts →</button>
+                </section>
+
                 <!-- Contact & Social Section -->
                 <section class="overview-section" id="contact-social-section">
-                    <h3 class="section-title">Contact & Social</h3>
+                    <div class="section-title-row">
+                        <h3 class="section-title">Contact & Social</h3>
+                        <button class="copy-section-btn" data-section="contact" title="Copy contact info">
+                            <i data-lucide="copy" class="icon-sm"></i>
+                        </button>
+                    </div>
 
                     <!-- Social Media -->
                     <div class="social-links-container" id="social-links-container">
@@ -136,22 +193,6 @@
                             <!-- Contact info will be inserted here -->
                         </div>
                     </div>
-                </section>
-
-                <!-- Typography Section -->
-                <section class="overview-section">
-                    <h3 class="section-title">Typography</h3>
-                    <div class="typography-preview">
-                        <div class="font-item">
-                            <label>Display Font</label>
-                            <div class="font-sample" id="overview-display-font">-</div>
-                        </div>
-                        <div class="font-item">
-                            <label>Body Font</label>
-                            <div class="font-sample" id="overview-body-font">-</div>
-                        </div>
-                    </div>
-                    <button class="show-all-btn" data-expand="fonts">Show all fonts →</button>
                 </section>
             </div>
         </div>
@@ -183,6 +224,15 @@
             </div>
         </div>
 
+        <!-- Pages Tab -->
+        <div class="tab-content" id="pages-tab">
+            <div class="empty-state">
+                <i data-lucide="file-text" class="empty-icon"></i>
+                <h2>No pages saved</h2>
+                <p>Save product or service pages to generate AI-powered summaries for your brand profile.</p>
+            </div>
+        </div>
+
         <!-- Brand Profile Tab -->
         <div class="tab-content" id="profile-tab">
             <div class="empty-state">
@@ -199,15 +249,23 @@
             <i data-lucide="download" class="btn-icon"></i>
             <span class="btn-label">Export</span>
         </button>
+        <button class="action-btn icon-only" id="save-page-btn" disabled title="Save current page">
+            <i data-lucide="file-plus" class="btn-icon"></i>
+        </button>
         <button class="action-btn primary" id="sync-btn" disabled>
-            <i data-lucide="cloud-upload" class="btn-icon"></i>
-            <span class="btn-label">Sync to App</span>
+            <i data-lucide="user" class="btn-icon"></i>
+            <span class="btn-label">Generate Profile</span>
         </button>
     </footer>
 
+    <!-- Configuration -->
+    <script src="config.js"></script>
+
+    <!-- Components -->
     <script src="components/ColorsTab.js"></script>
     <script src="components/FontsTab.js"></script>
     <script src="components/AssetsTab.js"></script>
+    <script src="components/PagesTab.js"></script>
     <script src="components/ProfileTab.js"></script>
     <script src="sidepanel.js"></script>
 </body>

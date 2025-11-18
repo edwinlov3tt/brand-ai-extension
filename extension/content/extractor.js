@@ -13,7 +13,6 @@ class AssetExtractor {
      * Extract all assets from the page
      */
     async extractAssets(page = document) {
-        console.log('Extracting assets from page...');
 
         const assets = [];
 
@@ -51,7 +50,6 @@ class AssetExtractor {
         // Sort by size (largest first)
         uniqueAssets.sort((a, b) => (b.width * b.height) - (a.width * a.height));
 
-        console.log(`Extracted ${uniqueAssets.length} unique assets`);
 
         return uniqueAssets.slice(0, this.MAX_ASSETS);
     }

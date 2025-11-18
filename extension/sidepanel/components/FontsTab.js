@@ -32,16 +32,9 @@ class FontsTab {
         controls.innerHTML = `
             <div class="fonts-header">
                 <h3 class="fonts-count" data-count="0">Fonts</h3>
-                <div class="fonts-actions">
-                    <button class="add-font-btn" title="Pick font from page (Alt+Shift+F)">
-                        <i data-lucide="case-sensitive" class="icon-sm"></i>
-                        Pick Font
-                    </button>
-                    <button class="add-text-btn" id="add-text-btn" title="Capture Text (Alt+Shift+T)">
-                        <i data-lucide="file-text" class="icon-sm"></i>
-                        Add Text
-                    </button>
-                </div>
+                <button class="copy-all-btn" id="copy-all-fonts-btn" title="Copy all fonts">
+                    <i data-lucide="copy" class="icon-sm"></i>
+                </button>
             </div>
         `;
 
@@ -52,25 +45,8 @@ class FontsTab {
         // Hide controls initially
         controls.style.display = 'none';
 
-        // Setup event listeners
-        controls.querySelector('.add-font-btn').addEventListener('click', () => {
-            this.openFontPicker();
-        });
-
-        controls.querySelector('.add-text-btn').addEventListener('click', () => {
-            this.openTextCapture();
-        });
-
         // Initialize icons
         if (typeof lucide !== 'undefined') lucide.createIcons();
-    }
-
-    /**
-     * Open text capture mode
-     */
-    openTextCapture() {
-        // Dispatch event to activate inspector in text mode
-        window.dispatchEvent(new CustomEvent('activateTextCapture'));
     }
 
     /**
@@ -322,7 +298,6 @@ class FontsTab {
     async copyFontToClipboard(fontFamily) {
         try {
             await navigator.clipboard.writeText(fontFamily);
-            console.log(`Copied ${fontFamily} to clipboard`);
             // TODO: Show toast notification
         } catch (err) {
             console.error('Failed to copy font:', err);
@@ -337,13 +312,6 @@ class FontsTab {
         window.dispatchEvent(new CustomEvent('deleteFont', { detail: font }));
     }
 
-    /**
-     * Open font picker
-     */
-    openFontPicker() {
-        // Dispatch event to activate inspector in font mode
-        window.dispatchEvent(new CustomEvent('activateFontPicker'));
-    }
 }
 
 // Export for use in sidepanel

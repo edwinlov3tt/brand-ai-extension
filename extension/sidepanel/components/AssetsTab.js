@@ -35,13 +35,18 @@ class AssetsTab {
         controls.innerHTML = `
             <div class="assets-header">
                 <h3 class="assets-count" data-count="0">Assets</h3>
-                <div class="view-toggle">
-                    <button class="view-btn active" data-view="grid" title="Grid view">
-                        <i data-lucide="grid-3x3" class="icon-sm"></i>
+                <div class="assets-header-actions">
+                    <button class="copy-all-btn" id="copy-all-assets-btn" title="Copy all asset links">
+                        <i data-lucide="copy" class="icon-sm"></i>
                     </button>
-                    <button class="view-btn" data-view="list" title="List view">
-                        <i data-lucide="list" class="icon-sm"></i>
-                    </button>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="grid" title="Grid view">
+                            <i data-lucide="grid-3x3" class="icon-sm"></i>
+                        </button>
+                        <button class="view-btn" data-view="list" title="List view">
+                            <i data-lucide="list" class="icon-sm"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;

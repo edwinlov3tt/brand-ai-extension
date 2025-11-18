@@ -7,6 +7,7 @@ import { generateBrandProfile } from './brand-profile.js';
 import { generateAdCopy } from './ad-copy.js';
 import { AD_TACTICS, getTacticsByCategory } from './tactics.js';
 import { serializeBrandProfile, deserializeBrandProfile } from './schema.js';
+import { generatePageSummary, generateId } from './page-summary.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -61,6 +62,26 @@ export default {
       if (path.startsWith('/api/ad-copies/') && request.method === 'GET') {
         const domain = path.split('/')[3];
         return await handleGetAdCopies(domain, env, corsHeaders);
+      }
+
+      // Pages API endpoints
+      if (path === '/api/pages' && request.method === 'POST') {
+        return await handleSavePage(request, env, corsHeaders);
+      }
+
+      if (path.match(/^\/api\/pages\/[^\/]+$/) && request.method === 'GET') {
+        const brandProfileId = path.split('/')[3];
+        return await handleGetPages(brandProfileId, env, corsHeaders);
+      }
+
+      if (path.match(/^\/api\/pages\/[^\/]+\/edit$/) && request.method === 'PUT') {
+        const id = path.split('/')[3];
+        return await handleUpdatePage(id, request, env, corsHeaders);
+      }
+
+      if (path.match(/^\/api\/pages\/[^\/]+$/) && request.method === 'DELETE') {
+        const id = path.split('/')[3];
+        return await handleDeletePage(id, env, corsHeaders);
       }
 
       // 404 for unknown routes
@@ -129,7 +150,15 @@ async function handleGenerateBrandProfile(request, env, corsHeaders) {
     serialized.audience_needs, serialized.audience_pain_points, serialized.writing_guide
   ).run();
 
-  return jsonResponse(brandProfile, 200, corsHeaders);
+  // Get the actual profile from the database (to get the correct ID in case of conflict)
+  const savedProfile = await env.DB.prepare(
+    'SELECT * FROM brand_profiles WHERE domain = ?'
+  ).bind(serialized.domain).first();
+
+  // Deserialize and return the actual saved profile with correct ID
+  const profileWithCorrectId = deserializeBrandProfile(savedProfile);
+
+  return jsonResponse(profileWithCorrectId, 200, corsHeaders);
 }
 
 /**
@@ -155,7 +184,7 @@ async function handleGetBrandProfile(domain, env, corsHeaders) {
  */
 async function handleGenerateAdCopy(request, env, corsHeaders) {
   const body = await request.json();
-  const { brandProfileId, domain, tactic, campaignObjective, variations = 3, includeEmojis = false, emojiInstructions } = body;
+  const { brandProfileId, domain, tactic, campaignObjective, variations = 3, includeEmojis = false, emojiInstructions, pageContext } = body;
 
   if (!tactic || !campaignObjective) {
     return jsonResponse({ error: 'Missing required fields: tactic, campaignObjective' }, 400, corsHeaders);
@@ -191,7 +220,8 @@ async function handleGenerateAdCopy(request, env, corsHeaders) {
     Math.min(variations, 5), // Max 5 variations
     env,
     includeEmojis,
-    emojiInstructions
+    emojiInstructions,
+    pageContext  // Pass pageContext to ad copy generation
   );
 
   // Save to D1 (handle both single and multi-component results)
@@ -344,6 +374,183 @@ async function handleGetAdCopies(domain, env, corsHeaders) {
   }));
 
   return jsonResponse({ adCopies }, 200, corsHeaders);
+}
+
+/**
+ * POST /api/pages
+ * Save a new page (product/service) with AI-generated summary
+ */
+async function handleSavePage(request, env, corsHeaders) {
+  const body = await request.json();
+  const { brandProfileId, url, title, description, metaImage, type, pageContent } = body;
+
+  if (!brandProfileId || !url || !type || !pageContent) {
+    return jsonResponse({ error: 'Missing required fields: brandProfileId, url, type, pageContent' }, 400, corsHeaders);
+  }
+
+  if (type !== 'product' && type !== 'service') {
+    return jsonResponse({ error: 'Type must be "product" or "service"' }, 400, corsHeaders);
+  }
+
+  // Check page limit (10 pages per brand)
+  const countResult = await env.DB.prepare(
+    'SELECT COUNT(*) as count FROM pages WHERE brand_profile_id = ?'
+  ).bind(brandProfileId).first();
+
+  if (countResult && countResult.count >= 10) {
+    return jsonResponse({ error: 'Maximum of 10 pages per brand profile' }, 400, corsHeaders);
+  }
+
+  // Generate AI summary
+  let summary;
+  try {
+    summary = await generatePageSummary({ title, description, pageContent, type }, env);
+  } catch (error) {
+    console.error('Failed to generate summary:', error);
+    // Use fallback summary if AI generation fails
+    summary = {
+      summary: 'Summary generation failed. Please edit manually.',
+      valuePropositions: [],
+      features: [],
+      benefits: [],
+      targetAudience: '',
+      tone: '',
+      keywords: []
+    };
+  }
+
+  // Generate unique ID
+  const id = generateId();
+
+  // Save to database
+  await env.DB.prepare(`
+    INSERT INTO pages (
+      id, brand_profile_id, url, title, description, meta_image, type,
+      summary, value_propositions, features, benefits, target_audience, tone, keywords,
+      page_content
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    brandProfileId,
+    url,
+    title || '',
+    description || '',
+    metaImage || '',
+    type,
+    summary.summary,
+    JSON.stringify(summary.valuePropositions),
+    JSON.stringify(summary.features),
+    JSON.stringify(summary.benefits),
+    summary.targetAudience,
+    summary.tone,
+    JSON.stringify(summary.keywords),
+    pageContent
+  ).run();
+
+  // Return saved page with summary
+  const page = {
+    id,
+    brandProfileId,
+    url,
+    title: title || '',
+    description: description || '',
+    metaImage: metaImage || '',
+    type,
+    summary: summary.summary,
+    valuePropositions: summary.valuePropositions,
+    features: summary.features,
+    benefits: summary.benefits,
+    targetAudience: summary.targetAudience,
+    tone: summary.tone,
+    keywords: summary.keywords,
+    createdAt: Date.now()
+  };
+
+  return jsonResponse({ page }, 200, corsHeaders);
+}
+
+/**
+ * GET /api/pages/:brandProfileId
+ * Get all pages for a brand profile
+ */
+async function handleGetPages(brandProfileId, env, corsHeaders) {
+  const result = await env.DB.prepare(`
+    SELECT
+      id, brand_profile_id, url, title, description, meta_image, type,
+      summary, value_propositions, features, benefits, target_audience, tone, keywords,
+      created_at, updated_at
+    FROM pages
+    WHERE brand_profile_id = ?
+    ORDER BY created_at DESC
+  `).bind(brandProfileId).all();
+
+  const pages = (result.results || []).map(row => ({
+    id: row.id,
+    brandProfileId: row.brand_profile_id,
+    url: row.url,
+    title: row.title,
+    description: row.description,
+    metaImage: row.meta_image,
+    type: row.type,
+    summary: row.summary,
+    valuePropositions: row.value_propositions ? JSON.parse(row.value_propositions) : [],
+    features: row.features ? JSON.parse(row.features) : [],
+    benefits: row.benefits ? JSON.parse(row.benefits) : [],
+    targetAudience: row.target_audience,
+    tone: row.tone,
+    keywords: row.keywords ? JSON.parse(row.keywords) : [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }));
+
+  return jsonResponse({ pages }, 200, corsHeaders);
+}
+
+/**
+ * PUT /api/pages/:id/edit
+ * Update page summary (manual edits)
+ */
+async function handleUpdatePage(id, request, env, corsHeaders) {
+  const body = await request.json();
+  const { summary, valuePropositions, features, benefits, targetAudience, tone, keywords } = body;
+
+  if (!summary) {
+    return jsonResponse({ error: 'Missing required field: summary' }, 400, corsHeaders);
+  }
+
+  // Update database
+  await env.DB.prepare(`
+    UPDATE pages SET
+      summary = ?,
+      value_propositions = ?,
+      features = ?,
+      benefits = ?,
+      target_audience = ?,
+      tone = ?,
+      keywords = ?,
+      updated_at = strftime('%s', 'now')
+    WHERE id = ?
+  `).bind(
+    summary,
+    JSON.stringify(valuePropositions || []),
+    JSON.stringify(features || []),
+    JSON.stringify(benefits || []),
+    targetAudience || '',
+    tone || '',
+    JSON.stringify(keywords || []),
+    id
+  ).run();
+
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+/**
+ * DELETE /api/pages/:id
+ * Delete a page
+ */
+async function handleDeletePage(id, env, corsHeaders) {
+  await env.DB.prepare('DELETE FROM pages WHERE id = ?').bind(id).run();
+  return jsonResponse({ success: true }, 200, corsHeaders);
 }
 
 /**

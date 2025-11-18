@@ -16,11 +16,33 @@ class BrandSelector {
         await this.loadBrands();
         this.setupEventListeners();
 
-        // Check URL params for brand
+        // Check URL params for brand first
         const urlParams = new URLSearchParams(window.location.search);
-        const domain = urlParams.get('domain');
-        if (domain) {
-            await this.selectBrand(domain);
+        const paramDomain = urlParams.get('domain');
+        if (paramDomain) {
+            await this.selectBrand(paramDomain);
+            return;
+        }
+
+        // Auto-select brand for current tab's domain
+        await this.autoSelectCurrentDomain();
+    }
+
+    async autoSelectCurrentDomain() {
+        try {
+            // Get the active tab's domain
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab || !tab.url) return;
+
+            const url = new URL(tab.url);
+            const currentDomain = url.hostname;
+
+            // Check if we have a brand for this domain
+            const hasBrand = this.brands.some(brand => brand.domain === currentDomain);
+            if (hasBrand) {
+                await this.selectBrand(currentDomain);
+            }
+        } catch (error) {
         }
     }
 

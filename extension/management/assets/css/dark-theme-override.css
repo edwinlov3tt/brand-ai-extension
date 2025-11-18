@@ -1,0 +1,319 @@
+/**
+ * Dark Theme Override for Metronic Components
+ * Forces dark mode by overriding Tailwind/Metronic CSS variables
+ */
+
+:root {
+    /* ===========================
+       Color Overrides (Dark Theme)
+       =========================== */
+
+    /* Backgrounds */
+    --tw-bg-opacity: 1;
+    --background: 30 30 30; /* #1E1E1E */
+    --muted: 45 45 45; /* #2D2D2D */
+    --card: 45 45 45; /* #2D2D2D */
+    --popover: 61 61 61; /* #3D3D3D */
+    --secondary: 61 61 61; /* #3D3D3D */
+
+    /* Text Colors */
+    --foreground: 224 224 224; /* #E0E0E0 */
+    --muted-foreground: 160 160 160; /* #A0A0A0 */
+    --secondary-foreground: 160 160 160; /* #A0A0A0 */
+    --card-foreground: 224 224 224; /* #E0E0E0 */
+    --popover-foreground: 224 224 224; /* #E0E0E0 */
+
+    /* Borders - Modern rgba for natural dark theme */
+    --border: 255 255 255; /* Will be used with 0.08 opacity */
+    --input: 255 255 255;
+    --ring: 220 38 39; /* Primary color for focus rings */
+    --tw-border-opacity: 0.08;
+
+    /* Primary Color (Red) */
+    --primary: 220 38 39; /* #dc2627 */
+    --primary-foreground: 255 255 255; /* White text on red */
+
+    /* Destructive/Danger */
+    --destructive: 220 53 69; /* #DC3545 */
+    --destructive-foreground: 255 255 255;
+
+    /* Accent */
+    --accent: 61 61 61; /* #3D3D3D */
+    --accent-foreground: 224 224 224; /* #E0E0E0 */
+}
+
+/* Force dark mode class */
+html.dark,
+html[data-kt-theme-mode="dark"],
+body {
+    color-scheme: dark;
+}
+
+/* ===========================
+   Component-Specific Overrides
+   =========================== */
+
+/* Cards */
+.kt-card,
+[class*="kt-card"] {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: rgb(224 224 224 / var(--tw-text-opacity));
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Buttons */
+.kt-btn-primary {
+    background-color: #dc2627 !important;
+    border-color: #dc2627 !important;
+    color: white !important;
+}
+
+.kt-btn-primary:hover {
+    background-color: #b91c1d !important;
+    border-color: #b91c1d !important;
+}
+
+.kt-btn-secondary {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: rgb(224 224 224 / var(--tw-text-opacity)) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.kt-btn-outline {
+    background-color: transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: rgb(224 224 224 / var(--tw-text-opacity)) !important;
+}
+
+.kt-btn-outline:hover {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity)) !important;
+    border-color: #dc2627 !important;
+    color: #dc2627 !important;
+}
+
+.kt-btn-ghost {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: rgb(160 160 160 / var(--tw-text-opacity)) !important;
+}
+
+.kt-btn-ghost:hover {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity)) !important;
+    color: rgb(224 224 224 / var(--tw-text-opacity)) !important;
+}
+
+/* Form Inputs */
+.kt-input,
+.kt-select,
+.kt-textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: rgb(224 224 224 / var(--tw-text-opacity)) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.kt-input:focus,
+.kt-select:focus,
+.kt-textarea:focus {
+    border-color: #dc2627 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 39, 0.15) !important;
+}
+
+.kt-input::placeholder,
+.kt-textarea::placeholder {
+    color: #666 !important;
+}
+
+/* Menu Components */
+.kt-menu {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity));
+}
+
+.kt-menu-link {
+    color: rgb(160 160 160 / var(--tw-text-opacity));
+}
+
+.kt-menu-link:hover {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity));
+    color: rgb(224 224 224 / var(--tw-text-opacity));
+}
+
+.kt-menu-item-active .kt-menu-link,
+.kt-menu-link-active {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity));
+    border-color: #dc2627;
+    color: #dc2627;
+}
+
+.kt-menu-item-here .kt-menu-icon,
+.kt-menu-item-active .kt-menu-icon {
+    color: #dc2627;
+}
+
+.kt-menu-item-here .kt-menu-title,
+.kt-menu-item-active .kt-menu-title {
+    color: #dc2627;
+}
+
+/* Dropdown Menus */
+.kt-menu-dropdown {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Modals */
+.kt-modal-content {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5) !important;
+}
+
+.kt-modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.kt-modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Sidebar */
+#sidebar {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity)) !important;
+}
+
+/* Scrollbars (Webkit) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgb(45 45 45 / var(--tw-bg-opacity));
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgb(77 77 77 / var(--tw-bg-opacity));
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgb(96 96 96 / var(--tw-bg-opacity));
+}
+
+/* Tabs */
+.kt-tabs-link {
+    color: rgb(160 160 160 / var(--tw-text-opacity));
+}
+
+.kt-tabs-link:hover {
+    color: rgb(224 224 224 / var(--tw-text-opacity));
+}
+
+.kt-tabs-link.active {
+    color: #dc2627;
+    border-bottom-color: #dc2627;
+}
+
+/* Accordions */
+.kt-accordion-item {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kt-accordion-toggle {
+    background-color: transparent;
+    color: rgb(224 224 224 / var(--tw-text-opacity));
+}
+
+.kt-accordion-toggle:hover {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity));
+}
+
+.kt-accordion-content {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity));
+}
+
+/* Badges */
+.kt-badge {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity));
+    color: rgb(224 224 224 / var(--tw-text-opacity));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kt-badge-secondary {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity));
+    color: rgb(224 224 224 / var(--tw-text-opacity));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kt-badge-primary {
+    background-color: #dc2627;
+    color: white;
+}
+
+/* Checkboxes & Radio Buttons */
+.kt-checkbox,
+.kt-radio {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kt-checkbox:checked,
+.kt-radio:checked {
+    background-color: #dc2627;
+    border-color: #dc2627;
+}
+
+/* Utility Classes for Dark Theme */
+.bg-background {
+    background-color: rgb(30 30 30 / var(--tw-bg-opacity));
+}
+
+.bg-muted {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity));
+}
+
+.bg-card {
+    background-color: rgb(45 45 45 / var(--tw-bg-opacity));
+}
+
+.bg-popover {
+    background-color: rgb(61 61 61 / var(--tw-bg-opacity));
+}
+
+.text-foreground {
+    color: rgb(224 224 224 / var(--tw-text-opacity));
+}
+
+.text-muted-foreground {
+    color: rgb(160 160 160 / var(--tw-text-opacity));
+}
+
+.text-secondary-foreground {
+    color: rgb(160 160 160 / var(--tw-text-opacity));
+}
+
+.text-primary {
+    color: #dc2627;
+}
+
+.border-border {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.border-primary {
+    border-color: #dc2627;
+}
+
+/* See More Card */
+.see-more-card {
+    border: 2px dashed rgba(255, 255, 255, 0.12) !important;
+}
