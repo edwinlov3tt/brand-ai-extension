@@ -68,16 +68,25 @@ export function serializeBrandProfile(profile) {
     audience_primary: profile.audience?.primary || '',
     audience_needs: JSON.stringify(profile.audience?.needs || []),
     audience_pain_points: JSON.stringify(profile.audience?.painPoints || []),
-    writing_guide: JSON.stringify(profile.writingGuide || {})
+    writing_guide: JSON.stringify(profile.writingGuide || {}),
+    additional_instructions: JSON.stringify(profile.additionalInstructions || [])
   };
 }
 
 /**
  * Deserialize brand profile from D1 row
+ * Returns nested structure matching extension BrandProfile type
  */
 export function deserializeBrandProfile(row) {
   return {
+    // Root-level identity fields
     id: row.id,
+    metadata: {
+      domain: row.domain,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    },
+    // Nested brand object (expected by extension ProfileTab)
     brand: {
       name: row.name,
       tagline: row.tagline,
@@ -86,6 +95,7 @@ export function deserializeBrandProfile(row) {
       positioning: row.positioning,
       valueProps: JSON.parse(row.value_props || '[]')
     },
+    // Nested voice object
     voice: {
       personality: JSON.parse(row.voice_personality || '[]'),
       toneSliders: JSON.parse(row.tone_sliders || '{}'),
@@ -94,17 +104,20 @@ export function deserializeBrandProfile(row) {
         avoid: JSON.parse(row.lexicon_avoid || '[]')
       }
     },
+    // Nested audience object
     audience: {
       primary: row.audience_primary,
       needs: JSON.parse(row.audience_needs || '[]'),
       painPoints: JSON.parse(row.audience_pain_points || '[]')
     },
     writingGuide: JSON.parse(row.writing_guide || '{}'),
-    metadata: {
-      domain: row.domain,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    }
+    additionalInstructions: JSON.parse(row.additional_instructions || '[]'),
+    // Keep flat fields for backward compatibility with webapp
+    domain: row.domain,
+    name: row.name,
+    tagline: row.tagline,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
 

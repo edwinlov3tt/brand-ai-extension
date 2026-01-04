@@ -8,22 +8,51 @@ import { generateAdCopy } from './ad-copy.js';
 import { AD_TACTICS, getTacticsByCategory } from './tactics.js';
 import { serializeBrandProfile, deserializeBrandProfile } from './schema.js';
 import { generatePageSummary, generateId } from './page-summary.js';
+import {
+  handleStreamChat,
+  createConversation,
+  listConversations,
+  getConversation,
+  getConversationMessages,
+  updateConversation,
+  deleteConversation,
+} from './chat.js';
+import {
+  handleImprovePrompt,
+  handleGenerateAnswer,
+  handleGenerate,
+} from './context-agent.js';
+import {
+  handleUpload,
+  handleDeleteUpload,
+  handleListUploads,
+  handleLinkUploads,
+  handleServeFile,
+} from './uploads.js';
+import { handleScheduled } from './cleanup.js';
+import { getCorsHeaders, handleOptions } from './cors.js';
+import { listAgents } from './agents/index.js';
+import { handleScrapeUrl } from './scrape.js';
+import { handleImproveContent } from './improve.js';
+import { handleGenerateAudience, handleDetectTone } from './ai-helpers.js';
+import {
+  handleListHistory,
+  handleGetHistoryItem,
+  handleSaveHistory,
+  handleDeleteHistory
+} from './history.js';
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // CORS headers for Chrome extension
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
+    // Get CORS headers based on request origin
+    const corsHeaders = getCorsHeaders(request);
 
     // Handle OPTIONS request for CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return handleOptions(request);
     }
 
     try {
@@ -59,6 +88,17 @@ export default {
         return await handleGetBrands(env, corsHeaders);
       }
 
+      // Alias for brand-profiles (used by webapp generate page)
+      if (path === '/api/brand-profiles' && request.method === 'GET') {
+        return await handleGetBrands(env, corsHeaders);
+      }
+
+      // GET /api/brand-profiles/:id - Get brand profile by ID
+      if (path.match(/^\/api\/brand-profiles\/[^\/]+$/) && request.method === 'GET') {
+        const brandId = path.split('/')[3];
+        return await handleGetBrandProfileById(brandId, env, corsHeaders);
+      }
+
       if (path.startsWith('/api/ad-copies/') && request.method === 'GET') {
         const domain = path.split('/')[3];
         return await handleGetAdCopies(domain, env, corsHeaders);
@@ -84,6 +124,276 @@ export default {
         return await handleDeletePage(id, env, corsHeaders);
       }
 
+      // =====================================================
+      // CHAT API ENDPOINTS
+      // =====================================================
+
+      // POST /api/chat - Stream chat response (SSE)
+      if (path === '/api/chat' && request.method === 'POST') {
+        return await handleStreamChat(request, env, ctx);
+      }
+
+      // POST /api/conversations - Create new conversation
+      if (path === '/api/conversations' && request.method === 'POST') {
+        return await createConversation(request, env);
+      }
+
+      // GET /api/conversations/:brandProfileId - List conversations for brand
+      if (path.match(/^\/api\/conversations\/[^\/]+$/) && request.method === 'GET') {
+        const brandProfileId = path.split('/')[3];
+        return await listConversations(request, env, brandProfileId);
+      }
+
+      // GET /api/conversations/:id/messages - Get messages for conversation
+      if (path.match(/^\/api\/conversations\/[^\/]+\/messages$/) && request.method === 'GET') {
+        const conversationId = path.split('/')[3];
+        return await getConversationMessages(request, env, conversationId);
+      }
+
+      // GET /api/conversations/:id - Get single conversation metadata (for agent restoration)
+      if (path.match(/^\/api\/conversations\/[^\/]+$/) && request.method === 'GET') {
+        const conversationId = path.split('/')[3];
+        return await getConversation(request, env, conversationId);
+      }
+
+      // PUT /api/conversations/:id - Update conversation (title, pin)
+      if (path.match(/^\/api\/conversations\/[^\/]+$/) && request.method === 'PUT') {
+        const conversationId = path.split('/')[3];
+        return await updateConversation(request, env, conversationId);
+      }
+
+      // DELETE /api/conversations/:id - Delete conversation
+      if (path.match(/^\/api\/conversations\/[^\/]+$/) && request.method === 'DELETE') {
+        const conversationId = path.split('/')[3];
+        return await deleteConversation(request, env, conversationId);
+      }
+
+      // =====================================================
+      // CONTEXT AGENT & GENERATION API ENDPOINTS
+      // =====================================================
+
+      // POST /api/improve-prompt - Generate questions to improve prompt
+      if (path === '/api/improve-prompt' && request.method === 'POST') {
+        return await handleImprovePrompt(request, env);
+      }
+
+      // POST /api/generate-answer - Auto-generate answer to context question
+      if (path === '/api/generate-answer' && request.method === 'POST') {
+        return await handleGenerateAnswer(request, env);
+      }
+
+      // POST /api/generate - Main content generation with SSE streaming
+      if (path === '/api/generate' && request.method === 'POST') {
+        return await handleGenerate(request, env, ctx);
+      }
+
+      // =====================================================
+      // CONTENT IMPROVER API ENDPOINTS
+      // =====================================================
+
+      // POST /api/scrape-url - Scrape content from a URL
+      if (path === '/api/scrape-url' && request.method === 'POST') {
+        return await handleScrapeUrl(request, env);
+      }
+
+      // POST /api/improve-content - Generate improved content with SSE streaming
+      if (path === '/api/improve-content' && request.method === 'POST') {
+        return await handleImproveContent(request, env, ctx);
+      }
+
+      // =====================================================
+      // FILE UPLOAD API ENDPOINTS
+      // =====================================================
+
+      // POST /api/uploads - Upload a file
+      if (path === '/api/uploads' && request.method === 'POST') {
+        return await handleUpload(request, env);
+      }
+
+      // POST /api/uploads/link - Link session uploads to conversation
+      if (path === '/api/uploads/link' && request.method === 'POST') {
+        return await handleLinkUploads(request, env);
+      }
+
+      // GET /api/uploads/file/:id - Serve a file from R2
+      if (path.match(/^\/api\/uploads\/file\/[^\/]+$/) && request.method === 'GET') {
+        const uploadId = path.split('/')[4];
+        return await handleServeFile(request, env, uploadId);
+      }
+
+      // GET /api/uploads/:sessionId - List pending uploads for session
+      if (path.match(/^\/api\/uploads\/[^\/]+$/) && request.method === 'GET') {
+        const sessionId = path.split('/')[3];
+        return await handleListUploads(request, env, sessionId);
+      }
+
+      // DELETE /api/uploads/:id - Delete a pending upload
+      if (path.match(/^\/api\/uploads\/[^\/]+$/) && request.method === 'DELETE') {
+        const uploadId = path.split('/')[3];
+        return await handleDeleteUpload(request, env, uploadId);
+      }
+
+      // GET /api/agents - List all agents
+      if (path === '/api/agents' && request.method === 'GET') {
+        return handleGetAgents(corsHeaders);
+      }
+
+      // =====================================================
+      // PROMPTS API ENDPOINTS
+      // =====================================================
+
+      // GET /api/prompts - List all prompts (system + user)
+      if (path === '/api/prompts' && request.method === 'GET') {
+        return await handleGetPrompts(env, corsHeaders);
+      }
+
+      // POST /api/prompts - Create a new user prompt
+      if (path === '/api/prompts' && request.method === 'POST') {
+        return await handleCreatePrompt(request, env, corsHeaders);
+      }
+
+      // PUT /api/prompts/:id - Update a prompt
+      if (path.match(/^\/api\/prompts\/[^\/]+$/) && request.method === 'PUT') {
+        const promptId = path.split('/')[3];
+        return await handleUpdatePrompt(promptId, request, env, corsHeaders);
+      }
+
+      // DELETE /api/prompts/:id - Delete a prompt
+      if (path.match(/^\/api\/prompts\/[^\/]+$/) && request.method === 'DELETE') {
+        const promptId = path.split('/')[3];
+        return await handleDeletePrompt(promptId, env, corsHeaders);
+      }
+
+      // POST /api/prompts/:id/favorite - Toggle favorite
+      if (path.match(/^\/api\/prompts\/[^\/]+\/favorite$/) && request.method === 'POST') {
+        const promptId = path.split('/')[3];
+        return await handleToggleFavorite(promptId, request, env, corsHeaders);
+      }
+
+      // =====================================================
+      // BRAND INSTRUCTIONS API ENDPOINTS
+      // =====================================================
+
+      // POST /api/brand-profile/:domain/instructions - Add new instruction
+      if (path.match(/^\/api\/brand-profile\/[^\/]+\/instructions$/) && request.method === 'POST') {
+        const domain = path.split('/')[3];
+        return await handleAddInstruction(domain, request, env, corsHeaders);
+      }
+
+      // PUT /api/brand-profile/:domain/instructions/:id - Update instruction
+      if (path.match(/^\/api\/brand-profile\/[^\/]+\/instructions\/[^\/]+$/) && request.method === 'PUT') {
+        const domain = path.split('/')[3];
+        const instructionId = path.split('/')[5];
+        return await handleUpdateInstruction(domain, instructionId, request, env, corsHeaders);
+      }
+
+      // DELETE /api/brand-profile/:domain/instructions/:id - Delete instruction
+      if (path.match(/^\/api\/brand-profile\/[^\/]+\/instructions\/[^\/]+$/) && request.method === 'DELETE') {
+        const domain = path.split('/')[3];
+        const instructionId = path.split('/')[5];
+        return await handleDeleteInstruction(domain, instructionId, env, corsHeaders);
+      }
+
+      // =====================================================
+      // SAVED AUDIENCES API ENDPOINTS
+      // =====================================================
+
+      // GET /api/brands/:brandId/audiences - List saved audiences for a brand
+      if (path.match(/^\/api\/brands\/[^\/]+\/audiences$/) && request.method === 'GET') {
+        const brandId = path.split('/')[3];
+        return await handleListAudiences(brandId, env, corsHeaders);
+      }
+
+      // POST /api/brands/:brandId/audiences - Save a new audience
+      if (path.match(/^\/api\/brands\/[^\/]+\/audiences$/) && request.method === 'POST') {
+        const brandId = path.split('/')[3];
+        return await handleCreateAudience(brandId, request, env, corsHeaders);
+      }
+
+      // PUT /api/brands/:brandId/audiences/:id - Update an audience
+      if (path.match(/^\/api\/brands\/[^\/]+\/audiences\/[^\/]+$/) && request.method === 'PUT') {
+        const brandId = path.split('/')[3];
+        const audienceId = path.split('/')[5];
+        return await handleUpdateAudience(brandId, audienceId, request, env, corsHeaders);
+      }
+
+      // DELETE /api/brands/:brandId/audiences/:id - Delete an audience
+      if (path.match(/^\/api\/brands\/[^\/]+\/audiences\/[^\/]+$/) && request.method === 'DELETE') {
+        const brandId = path.split('/')[3];
+        const audienceId = path.split('/')[5];
+        return await handleDeleteAudience(brandId, audienceId, env, corsHeaders);
+      }
+
+      // =====================================================
+      // SAVED TONES API ENDPOINTS
+      // =====================================================
+
+      // GET /api/brands/:brandId/tones - List saved tones for a brand
+      if (path.match(/^\/api\/brands\/[^\/]+\/tones$/) && request.method === 'GET') {
+        const brandId = path.split('/')[3];
+        return await handleListTones(brandId, env, corsHeaders);
+      }
+
+      // POST /api/brands/:brandId/tones - Save a new tone
+      if (path.match(/^\/api\/brands\/[^\/]+\/tones$/) && request.method === 'POST') {
+        const brandId = path.split('/')[3];
+        return await handleCreateTone(brandId, request, env, corsHeaders);
+      }
+
+      // PUT /api/brands/:brandId/tones/:id - Update a tone
+      if (path.match(/^\/api\/brands\/[^\/]+\/tones\/[^\/]+$/) && request.method === 'PUT') {
+        const brandId = path.split('/')[3];
+        const toneId = path.split('/')[5];
+        return await handleUpdateTone(brandId, toneId, request, env, corsHeaders);
+      }
+
+      // DELETE /api/brands/:brandId/tones/:id - Delete a tone
+      if (path.match(/^\/api\/brands\/[^\/]+\/tones\/[^\/]+$/) && request.method === 'DELETE') {
+        const brandId = path.split('/')[3];
+        const toneId = path.split('/')[5];
+        return await handleDeleteTone(brandId, toneId, env, corsHeaders);
+      }
+
+      // =====================================================
+      // AI HELPER ENDPOINTS
+      // =====================================================
+
+      // POST /api/ai/generate-audience - Generate audience from description
+      if (path === '/api/ai/generate-audience' && request.method === 'POST') {
+        return await handleGenerateAudience(request, env);
+      }
+
+      // POST /api/ai/detect-tone - Detect tone from text
+      if (path === '/api/ai/detect-tone' && request.method === 'POST') {
+        return await handleDetectTone(request, env);
+      }
+
+      // ==========================================
+      // History Endpoints
+      // ==========================================
+
+      // GET /api/history - List history (with optional search)
+      if (path === '/api/history' && request.method === 'GET') {
+        return await handleListHistory(request, env);
+      }
+
+      // POST /api/history - Save a generation to history
+      if (path === '/api/history' && request.method === 'POST') {
+        return await handleSaveHistory(request, env);
+      }
+
+      // GET /api/history/:id - Get a specific history item
+      if (path.match(/^\/api\/history\/[\w-]+$/) && request.method === 'GET') {
+        const id = path.split('/')[3];
+        return await handleGetHistoryItem(request, env, id);
+      }
+
+      // DELETE /api/history/:id - Delete a history item
+      if (path.match(/^\/api\/history\/[\w-]+$/) && request.method === 'DELETE') {
+        const id = path.split('/')[3];
+        return await handleDeleteHistory(request, env, id);
+      }
+
       // 404 for unknown routes
       return jsonResponse({ error: 'Not found' }, 404, corsHeaders);
 
@@ -95,6 +405,11 @@ export default {
         corsHeaders
       );
     }
+  },
+
+  // Cron handler for cleanup tasks
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(handleScheduled(event, env, ctx));
   },
 };
 
@@ -169,6 +484,23 @@ async function handleGetBrandProfile(domain, env, corsHeaders) {
   const result = await env.DB.prepare(
     'SELECT * FROM brand_profiles WHERE domain = ?'
   ).bind(domain).first();
+
+  if (!result) {
+    return jsonResponse({ error: 'Brand profile not found' }, 404, corsHeaders);
+  }
+
+  const brandProfile = deserializeBrandProfile(result);
+  return jsonResponse(brandProfile, 200, corsHeaders);
+}
+
+/**
+ * GET /api/brand-profiles/:id
+ * Retrieve saved brand profile by ID
+ */
+async function handleGetBrandProfileById(brandId, env, corsHeaders) {
+  const result = await env.DB.prepare(
+    'SELECT * FROM brand_profiles WHERE id = ?'
+  ).bind(brandId).first();
 
   if (!result) {
     return jsonResponse({ error: 'Brand profile not found' }, 404, corsHeaders);
@@ -550,6 +882,573 @@ async function handleUpdatePage(id, request, env, corsHeaders) {
  */
 async function handleDeletePage(id, env, corsHeaders) {
   await env.DB.prepare('DELETE FROM pages WHERE id = ?').bind(id).run();
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+/**
+ * GET /api/agents
+ * List all agents (from file-based registry)
+ */
+function handleGetAgents(corsHeaders) {
+  // Use file-based agent registry (includes chipSelectors and starterMessage)
+  const agents = listAgents();
+  return jsonResponse({ agents }, 200, corsHeaders);
+}
+
+// =====================================================
+// PROMPTS HANDLERS
+// =====================================================
+
+/**
+ * GET /api/prompts
+ * List all prompts (system + user)
+ */
+async function handleGetPrompts(env, corsHeaders) {
+  const result = await env.DB.prepare(`
+    SELECT id, is_system, title, description, prompt_text, tags, category, icon, is_favorite, created_at, updated_at
+    FROM prompts
+    ORDER BY is_favorite DESC, is_system DESC, title ASC
+  `).all();
+
+  const prompts = (result.results || []).map(row => ({
+    id: row.id,
+    isSystem: row.is_system === 1,
+    title: row.title,
+    description: row.description,
+    promptText: row.prompt_text,
+    tags: row.tags ? JSON.parse(row.tags) : [],
+    category: row.category,
+    icon: row.icon,
+    isFavorite: row.is_favorite === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+
+  return jsonResponse({ prompts }, 200, corsHeaders);
+}
+
+/**
+ * POST /api/prompts
+ * Create a new user prompt
+ */
+async function handleCreatePrompt(request, env, corsHeaders) {
+  const body = await request.json();
+  const { title, description, promptText, tags, category, icon } = body;
+
+  if (!title || !promptText) {
+    return jsonResponse({ error: 'Missing required fields: title, promptText' }, 400, corsHeaders);
+  }
+
+  const id = `prompt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  await env.DB.prepare(`
+    INSERT INTO prompts (id, is_system, title, description, prompt_text, tags, category, icon)
+    VALUES (?, 0, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    title,
+    description || '',
+    promptText,
+    JSON.stringify(tags || []),
+    category || 'custom',
+    icon || 'FileText'
+  ).run();
+
+  const prompt = {
+    id,
+    isSystem: false,
+    title,
+    description: description || '',
+    promptText,
+    tags: tags || [],
+    category: category || 'custom',
+    icon: icon || 'FileText',
+    isFavorite: false,
+  };
+
+  return jsonResponse({ prompt }, 201, corsHeaders);
+}
+
+/**
+ * PUT /api/prompts/:id
+ * Update a prompt (only user prompts can be fully edited)
+ */
+async function handleUpdatePrompt(promptId, request, env, corsHeaders) {
+  const body = await request.json();
+  const { title, description, promptText, tags, category, icon } = body;
+
+  // Check if prompt exists and is not a system prompt
+  const existing = await env.DB.prepare(
+    'SELECT is_system FROM prompts WHERE id = ?'
+  ).bind(promptId).first();
+
+  if (!existing) {
+    return jsonResponse({ error: 'Prompt not found' }, 404, corsHeaders);
+  }
+
+  if (existing.is_system === 1) {
+    return jsonResponse({ error: 'System prompts cannot be edited' }, 403, corsHeaders);
+  }
+
+  await env.DB.prepare(`
+    UPDATE prompts SET
+      title = ?,
+      description = ?,
+      prompt_text = ?,
+      tags = ?,
+      category = ?,
+      icon = ?,
+      updated_at = strftime('%s', 'now')
+    WHERE id = ?
+  `).bind(
+    title,
+    description || '',
+    promptText,
+    JSON.stringify(tags || []),
+    category || 'custom',
+    icon || 'FileText',
+    promptId
+  ).run();
+
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+/**
+ * DELETE /api/prompts/:id
+ * Delete a prompt (only user prompts)
+ */
+async function handleDeletePrompt(promptId, env, corsHeaders) {
+  // Check if prompt exists and is not a system prompt
+  const existing = await env.DB.prepare(
+    'SELECT is_system FROM prompts WHERE id = ?'
+  ).bind(promptId).first();
+
+  if (!existing) {
+    return jsonResponse({ error: 'Prompt not found' }, 404, corsHeaders);
+  }
+
+  if (existing.is_system === 1) {
+    return jsonResponse({ error: 'System prompts cannot be deleted' }, 403, corsHeaders);
+  }
+
+  await env.DB.prepare('DELETE FROM prompts WHERE id = ?').bind(promptId).run();
+
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+/**
+ * POST /api/prompts/:id/favorite
+ * Toggle favorite status for a prompt
+ */
+async function handleToggleFavorite(promptId, request, env, corsHeaders) {
+  const body = await request.json();
+  const { isFavorite } = body;
+
+  // Check if prompt exists
+  const existing = await env.DB.prepare(
+    'SELECT id FROM prompts WHERE id = ?'
+  ).bind(promptId).first();
+
+  if (!existing) {
+    return jsonResponse({ error: 'Prompt not found' }, 404, corsHeaders);
+  }
+
+  await env.DB.prepare(
+    'UPDATE prompts SET is_favorite = ? WHERE id = ?'
+  ).bind(isFavorite ? 1 : 0, promptId).run();
+
+  return jsonResponse({ success: true, isFavorite }, 200, corsHeaders);
+}
+
+// =====================================================
+// BRAND INSTRUCTIONS HANDLERS
+// =====================================================
+
+/**
+ * POST /api/brand-profile/:domain/instructions
+ * Add a new instruction to brand profile
+ */
+async function handleAddInstruction(domain, request, env, corsHeaders) {
+  const body = await request.json();
+  const { text, source = 'manual' } = body;
+
+  if (!text || !text.trim()) {
+    return jsonResponse({ error: 'Missing required field: text' }, 400, corsHeaders);
+  }
+
+  // Get current brand profile
+  const result = await env.DB.prepare(
+    'SELECT id, additional_instructions FROM brand_profiles WHERE domain = ?'
+  ).bind(domain).first();
+
+  if (!result) {
+    return jsonResponse({ error: 'Brand profile not found' }, 404, corsHeaders);
+  }
+
+  // Parse existing instructions
+  const instructions = JSON.parse(result.additional_instructions || '[]');
+
+  // Create new instruction
+  const newInstruction = {
+    id: `instr-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    text: text.trim(),
+    createdAt: Date.now(),
+    source: source === 'chat' ? 'chat' : 'manual'
+  };
+
+  // Add to array
+  instructions.push(newInstruction);
+
+  // Update database
+  await env.DB.prepare(
+    'UPDATE brand_profiles SET additional_instructions = ?, updated_at = ? WHERE domain = ?'
+  ).bind(JSON.stringify(instructions), Date.now(), domain).run();
+
+  return jsonResponse({ instruction: newInstruction }, 201, corsHeaders);
+}
+
+/**
+ * PUT /api/brand-profile/:domain/instructions/:id
+ * Update an existing instruction
+ */
+async function handleUpdateInstruction(domain, instructionId, request, env, corsHeaders) {
+  const body = await request.json();
+  const { text } = body;
+
+  if (!text || !text.trim()) {
+    return jsonResponse({ error: 'Missing required field: text' }, 400, corsHeaders);
+  }
+
+  // Get current brand profile
+  const result = await env.DB.prepare(
+    'SELECT additional_instructions FROM brand_profiles WHERE domain = ?'
+  ).bind(domain).first();
+
+  if (!result) {
+    return jsonResponse({ error: 'Brand profile not found' }, 404, corsHeaders);
+  }
+
+  // Parse existing instructions
+  const instructions = JSON.parse(result.additional_instructions || '[]');
+
+  // Find and update instruction
+  const index = instructions.findIndex(i => i.id === instructionId);
+  if (index === -1) {
+    return jsonResponse({ error: 'Instruction not found' }, 404, corsHeaders);
+  }
+
+  instructions[index].text = text.trim();
+
+  // Update database
+  await env.DB.prepare(
+    'UPDATE brand_profiles SET additional_instructions = ?, updated_at = ? WHERE domain = ?'
+  ).bind(JSON.stringify(instructions), Date.now(), domain).run();
+
+  return jsonResponse({ instruction: instructions[index] }, 200, corsHeaders);
+}
+
+/**
+ * DELETE /api/brand-profile/:domain/instructions/:id
+ * Delete an instruction
+ */
+async function handleDeleteInstruction(domain, instructionId, env, corsHeaders) {
+  // Get current brand profile
+  const result = await env.DB.prepare(
+    'SELECT additional_instructions FROM brand_profiles WHERE domain = ?'
+  ).bind(domain).first();
+
+  if (!result) {
+    return jsonResponse({ error: 'Brand profile not found' }, 404, corsHeaders);
+  }
+
+  // Parse existing instructions
+  const instructions = JSON.parse(result.additional_instructions || '[]');
+
+  // Find instruction
+  const index = instructions.findIndex(i => i.id === instructionId);
+  if (index === -1) {
+    return jsonResponse({ error: 'Instruction not found' }, 404, corsHeaders);
+  }
+
+  // Remove instruction
+  instructions.splice(index, 1);
+
+  // Update database
+  await env.DB.prepare(
+    'UPDATE brand_profiles SET additional_instructions = ?, updated_at = ? WHERE domain = ?'
+  ).bind(JSON.stringify(instructions), Date.now(), domain).run();
+
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+// =====================================================
+// SAVED AUDIENCES HANDLERS
+// =====================================================
+
+/**
+ * GET /api/brands/:brandId/audiences
+ * List all saved audiences for a brand
+ */
+async function handleListAudiences(brandId, env, corsHeaders) {
+  const result = await env.DB.prepare(`
+    SELECT id, brand_profile_id, name, gender, age_min, age_max, pain_points, source, created_at
+    FROM saved_audiences
+    WHERE brand_profile_id = ?
+    ORDER BY created_at DESC
+  `).bind(brandId).all();
+
+  const audiences = (result.results || []).map(row => ({
+    id: row.id,
+    brandProfileId: row.brand_profile_id,
+    name: row.name,
+    gender: row.gender,
+    ageRange: { min: row.age_min, max: row.age_max },
+    painPoints: JSON.parse(row.pain_points || '[]'),
+    source: row.source,
+    createdAt: row.created_at,
+  }));
+
+  return jsonResponse({ audiences }, 200, corsHeaders);
+}
+
+/**
+ * POST /api/brands/:brandId/audiences
+ * Create a new saved audience
+ */
+async function handleCreateAudience(brandId, request, env, corsHeaders) {
+  const body = await request.json();
+  const { name, gender, ageRange, painPoints, source = 'manual' } = body;
+
+  if (!name || !gender || !ageRange) {
+    return jsonResponse({ error: 'Missing required fields: name, gender, ageRange' }, 400, corsHeaders);
+  }
+
+  if (!['female', 'male', 'any'].includes(gender)) {
+    return jsonResponse({ error: 'Gender must be "female", "male", or "any"' }, 400, corsHeaders);
+  }
+
+  const id = `aud-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  await env.DB.prepare(`
+    INSERT INTO saved_audiences (id, brand_profile_id, name, gender, age_min, age_max, pain_points, source)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    brandId,
+    name,
+    gender,
+    ageRange.min || 18,
+    ageRange.max || 65,
+    JSON.stringify(painPoints || []),
+    source === 'ai_suggested' ? 'ai_suggested' : 'manual'
+  ).run();
+
+  const audience = {
+    id,
+    brandProfileId: brandId,
+    name,
+    gender,
+    ageRange: { min: ageRange.min || 18, max: ageRange.max || 65 },
+    painPoints: painPoints || [],
+    source: source === 'ai_suggested' ? 'ai_suggested' : 'manual',
+    createdAt: Math.floor(Date.now() / 1000),
+  };
+
+  return jsonResponse({ audience }, 201, corsHeaders);
+}
+
+/**
+ * PUT /api/brands/:brandId/audiences/:id
+ * Update an existing audience
+ */
+async function handleUpdateAudience(brandId, audienceId, request, env, corsHeaders) {
+  const body = await request.json();
+  const { name, gender, ageRange, painPoints } = body;
+
+  // Check if audience exists
+  const existing = await env.DB.prepare(
+    'SELECT id FROM saved_audiences WHERE id = ? AND brand_profile_id = ?'
+  ).bind(audienceId, brandId).first();
+
+  if (!existing) {
+    return jsonResponse({ error: 'Audience not found' }, 404, corsHeaders);
+  }
+
+  if (gender && !['female', 'male', 'any'].includes(gender)) {
+    return jsonResponse({ error: 'Gender must be "female", "male", or "any"' }, 400, corsHeaders);
+  }
+
+  // Build update query dynamically based on provided fields
+  const updates = [];
+  const values = [];
+
+  if (name !== undefined) {
+    updates.push('name = ?');
+    values.push(name);
+  }
+  if (gender !== undefined) {
+    updates.push('gender = ?');
+    values.push(gender);
+  }
+  if (ageRange !== undefined) {
+    updates.push('age_min = ?, age_max = ?');
+    values.push(ageRange.min || 18, ageRange.max || 65);
+  }
+  if (painPoints !== undefined) {
+    updates.push('pain_points = ?');
+    values.push(JSON.stringify(painPoints));
+  }
+
+  if (updates.length === 0) {
+    return jsonResponse({ error: 'No fields to update' }, 400, corsHeaders);
+  }
+
+  values.push(audienceId, brandId);
+
+  await env.DB.prepare(`
+    UPDATE saved_audiences SET ${updates.join(', ')}
+    WHERE id = ? AND brand_profile_id = ?
+  `).bind(...values).run();
+
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+/**
+ * DELETE /api/brands/:brandId/audiences/:id
+ * Delete an audience
+ */
+async function handleDeleteAudience(brandId, audienceId, env, corsHeaders) {
+  const result = await env.DB.prepare(
+    'DELETE FROM saved_audiences WHERE id = ? AND brand_profile_id = ?'
+  ).bind(audienceId, brandId).run();
+
+  if (result.changes === 0) {
+    return jsonResponse({ error: 'Audience not found' }, 404, corsHeaders);
+  }
+
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+// =====================================================
+// SAVED TONES CRUD HANDLERS
+// =====================================================
+
+/**
+ * GET /api/brands/:brandId/tones
+ * List all saved tones for a brand
+ */
+async function handleListTones(brandId, env, corsHeaders) {
+  const result = await env.DB.prepare(`
+    SELECT id, name, traits, description, source, created_at
+    FROM saved_tones
+    WHERE brand_profile_id = ?
+    ORDER BY created_at DESC
+  `).bind(brandId).all();
+
+  const tones = (result.results || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    traits: JSON.parse(row.traits || '[]'),
+    description: row.description,
+    source: row.source,
+    createdAt: row.created_at
+  }));
+
+  return jsonResponse({ tones }, 200, corsHeaders);
+}
+
+/**
+ * POST /api/brands/:brandId/tones
+ * Save a new tone
+ */
+async function handleCreateTone(brandId, request, env, corsHeaders) {
+  const body = await request.json();
+  const { name, traits, description, source = 'manual' } = body;
+
+  if (!name || !traits || !Array.isArray(traits)) {
+    return jsonResponse({
+      error: 'Name and traits (array) are required'
+    }, 400, corsHeaders);
+  }
+
+  const id = crypto.randomUUID();
+
+  await env.DB.prepare(`
+    INSERT INTO saved_tones (id, brand_profile_id, name, traits, description, source)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(id, brandId, name, JSON.stringify(traits), description || '', source).run();
+
+  return jsonResponse({
+    id,
+    name,
+    traits,
+    description: description || '',
+    source,
+    createdAt: Math.floor(Date.now() / 1000)
+  }, 201, corsHeaders);
+}
+
+/**
+ * PUT /api/brands/:brandId/tones/:id
+ * Update a tone
+ */
+async function handleUpdateTone(brandId, toneId, request, env, corsHeaders) {
+  const body = await request.json();
+  const { name, traits, description } = body;
+
+  // Check if tone exists
+  const existing = await env.DB.prepare(
+    'SELECT id FROM saved_tones WHERE id = ? AND brand_profile_id = ?'
+  ).bind(toneId, brandId).first();
+
+  if (!existing) {
+    return jsonResponse({ error: 'Tone not found' }, 404, corsHeaders);
+  }
+
+  // Build update query dynamically
+  const updates = [];
+  const values = [];
+
+  if (name !== undefined) {
+    updates.push('name = ?');
+    values.push(name);
+  }
+  if (traits !== undefined) {
+    updates.push('traits = ?');
+    values.push(JSON.stringify(traits));
+  }
+  if (description !== undefined) {
+    updates.push('description = ?');
+    values.push(description);
+  }
+
+  if (updates.length === 0) {
+    return jsonResponse({ error: 'No fields to update' }, 400, corsHeaders);
+  }
+
+  values.push(toneId, brandId);
+
+  await env.DB.prepare(`
+    UPDATE saved_tones SET ${updates.join(', ')}
+    WHERE id = ? AND brand_profile_id = ?
+  `).bind(...values).run();
+
+  return jsonResponse({ success: true }, 200, corsHeaders);
+}
+
+/**
+ * DELETE /api/brands/:brandId/tones/:id
+ * Delete a tone
+ */
+async function handleDeleteTone(brandId, toneId, env, corsHeaders) {
+  const result = await env.DB.prepare(
+    'DELETE FROM saved_tones WHERE id = ? AND brand_profile_id = ?'
+  ).bind(toneId, brandId).run();
+
+  if (result.changes === 0) {
+    return jsonResponse({ error: 'Tone not found' }, 404, corsHeaders);
+  }
+
   return jsonResponse({ success: true }, 200, corsHeaders);
 }
 
