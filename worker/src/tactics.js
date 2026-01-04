@@ -4,35 +4,6 @@
  */
 
 export const AD_TACTICS = {
-  facebook_title: {
-    id: 'facebook_title',
-    name: 'Facebook Ad Title',
-    description: 'Attention-grabbing title for Facebook ads',
-    maxChars: 40,
-    maxWords: 6,
-    category: 'social',
-    promptTemplate: (brandProfile, objective) => `You are writing a Facebook ad title for ${brandProfile.brand.name}.
-
-BRAND VOICE:
-- Personality: ${brandProfile.voice.personality.join(', ')}
-- Tone: Formal ${brandProfile.voice.toneSliders.formal}/100, Playful ${brandProfile.voice.toneSliders.playful}/100
-- Preferred phrases: ${brandProfile.voice.lexicon.preferred.join(', ')}
-- Avoid: ${brandProfile.voice.lexicon.avoid.join(', ')}
-
-TARGET AUDIENCE: ${brandProfile.audience.primary}
-
-CAMPAIGN OBJECTIVE: ${objective}
-
-Create a compelling Facebook ad title that:
-- Is MAX 40 characters and 6 words
-- Uses emotional hooks and clear benefits
-- Matches the brand voice and tone
-- Addresses the campaign objective
-- Grabs attention in a crowded feed
-
-Return ONLY the title text, no quotes or explanations.`
-  },
-
   google_headline: {
     id: 'google_headline',
     name: 'Google Search Headline',
@@ -40,7 +11,7 @@ Return ONLY the title text, no quotes or explanations.`
     maxChars: 30,
     maxWords: 5,
     category: 'search',
-    promptTemplate: (brandProfile, objective) => `You are writing a Google Search ad headline for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective) => `You are writing a Google Search ad headline for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -68,9 +39,9 @@ Return ONLY the headline text, no quotes or explanations.`
     maxChars: 150,
     maxWords: 25,
     category: 'social',
-    promptTemplate: (brandProfile, objective) => `You are writing a LinkedIn ad introduction for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective) => `You are writing a LinkedIn ad introduction for ${brandProfile.name}.
 
-BRAND POSITIONING: ${brandProfile.brand.positioning}
+BRAND POSITIONING: ${brandProfile.positioning}
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -98,7 +69,7 @@ Return ONLY the intro text, no quotes or explanations.`
     maxChars: 125,
     maxWords: 20,
     category: 'social',
-    promptTemplate: (brandProfile, objective) => `You are writing an Instagram caption for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective) => `You are writing an Instagram caption for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -123,10 +94,11 @@ Return ONLY the caption text, no quotes or explanations.`
     id: 'email_subject',
     name: 'Email Subject Line',
     description: 'Compelling subject line for email campaigns',
-    maxChars: 50,
-    maxWords: 8,
+    maxChars: 100,  // Industry standard allows flexibility
+    maxWords: 15,
     category: 'email',
-    promptTemplate: (brandProfile, objective) => `You are writing an email subject line for ${brandProfile.brand.name}.
+    defaultEmojis: true,  // Emojis enabled by default
+    promptTemplate: (brandProfile, objective) => `You are writing an email subject line for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -139,11 +111,11 @@ PAIN POINTS: ${brandProfile.audience.painPoints.join(', ')}
 CAMPAIGN OBJECTIVE: ${objective}
 
 Create an email subject line that:
-- Is MAX 50 characters and 8 words
-- Creates urgency or curiosity
-- Personalizes when possible
-- Avoids spam triggers
-- Drives opens
+- Aims for 40-60 characters (optimal for mobile) but can go longer if compelling
+- Creates urgency, curiosity, or a clear benefit
+- Feels personal and conversational, not salesy
+- Avoids spam trigger words (FREE, ACT NOW, etc.)
+- Makes the reader want to open the email immediately
 
 Return ONLY the subject line text, no quotes or explanations.`
   },
@@ -155,7 +127,7 @@ Return ONLY the subject line text, no quotes or explanations.`
     maxChars: 280,
     maxWords: 45,
     category: 'social',
-    promptTemplate: (brandProfile, objective) => `You are writing a Twitter/X post for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective) => `You are writing a Twitter/X post for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -183,6 +155,7 @@ Return ONLY the post text, no quotes or explanations.`
     description: 'Complete Facebook ad with post text, headline, description, and CTA',
     category: 'social',
     multiComponent: true,
+    defaultEmojis: true,  // Emojis enabled by default
     components: [
       { name: 'Post Text', maxChars: 125, count: 3 },
       { name: 'Headline', maxChars: 40, count: 3 },
@@ -190,7 +163,7 @@ Return ONLY the post text, no quotes or explanations.`
       { name: 'Call to Action', maxChars: 20, count: 2 }
     ],
     ctaOptions: ['No Button', 'Get Quote', 'Get Showtimes', 'Listen Now', 'Request Time', 'See Menu', 'Shop Now', 'Sign Up', 'Subscribe', 'Watch More', 'Learn More', 'Apply Now', 'Book Now', 'Contact Us', 'Donate Now', 'Download', 'Get Offer'],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a complete Facebook ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a complete Facebook ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -246,7 +219,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Call to Action', maxChars: 20, count: 2 }
     ],
     ctaOptions: ['No Button', 'Get Quote', 'Get Showtimes', 'Listen Now', 'Request Time', 'See Menu', 'Shop Now', 'Sign Up', 'Subscribe', 'Watch More', 'Learn More', 'Apply Now', 'Book Now', 'Contact Us', 'Donate Now', 'Download', 'Get Offer'],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Facebook carousel ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Facebook carousel ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -300,7 +273,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Call to Action', maxChars: 20, count: 2 }
     ],
     ctaOptions: ['Learn More', 'Pre-Order Now', 'Experience Now', 'Get Tickets Now', 'Listen Now', 'Interested', 'Subscribe', 'Get Showtimes', 'Get Quote', 'Order Now', 'Install Now', 'Read More', 'View More', 'Play Game', 'Watch Now', 'Apply Now', 'Book Now', 'Download', 'Show Now', 'Contact Us', 'Sign Up'],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a TikTok ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a TikTok ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -343,7 +316,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Call to Action', maxChars: 20, count: 2 }
     ],
     ctaOptions: ['Apply Now', 'Book Now', 'Buy Tickets', 'Get Now', 'Listen', 'More', 'Order Now', 'Play', 'Read', 'Show Now', 'Show', 'Showtimes', 'Sign Up', 'View', 'Watch'],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Snapchat ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Snapchat ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -387,9 +360,9 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Call to Action', maxChars: 20, count: 2 }
     ],
     ctaOptions: ['Apply', 'Download', 'View Quote', 'Learn More', 'Sign Up', 'Subscribe', 'Register', 'Join', 'Attend'],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a LinkedIn ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a LinkedIn ad for ${brandProfile.name}.
 
-BRAND POSITIONING: ${brandProfile.brand.positioning}
+BRAND POSITIONING: ${brandProfile.positioning}
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -437,7 +410,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Title', maxChars: 100, recommendedChars: 40, count: 3 },
       { name: 'Description', maxChars: 500, recommendedChars: 60, count: 3 }
     ],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Pinterest ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Pinterest ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -481,7 +454,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Call to Action', maxChars: 20, count: 2 }
     ],
     ctaOptions: ['Learn more', 'Buy now', 'Shop now', 'Get quote', 'Sign up', 'Book now', 'Apply now', 'Contact us', 'Message', 'See menu', 'Subscribe', 'Listen now', 'Get coupon'],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Nextdoor display ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Nextdoor display ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -531,7 +504,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
     components: [
       { name: 'Headline', maxChars: 70, count: 3 }
     ],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Nextdoor for sale/free ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Nextdoor for sale/free ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -568,7 +541,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Call to Action', maxChars: 20, count: 2 }
     ],
     ctaOptions: ['Learn more', 'Buy now', 'Shop now', 'Get quote', 'Sign up', 'Book now', 'Apply now', 'Contact us', 'Message', 'See menu', 'Subscribe', 'Listen now', 'Get coupon'],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Nextdoor right-hand rail ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Nextdoor right-hand rail ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -609,7 +582,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Title/Headline', maxChars: 30, count: 3 },
       { name: 'Body Text', maxChars: 200, count: 3 }
     ],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a native ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a native ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -646,11 +619,12 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
     description: 'Email subject line and preview text',
     category: 'email',
     multiComponent: true,
+    defaultEmojis: true,  // Emojis enabled by default
     components: [
-      { name: 'Subject Line', maxChars: 50, count: 3 },
-      { name: 'Preview Text', maxChars: 100, count: 3 }
+      { name: 'Subject Line', maxChars: 100, count: 3 },  // Industry standard flexibility
+      { name: 'Preview Text', maxChars: 150, count: 3 }
     ],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating email marketing copy for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating email marketing copy for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -697,7 +671,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
       { name: 'Long Description', maxChars: 90, count: 1 },
       { name: 'Business Name', maxChars: 25, count: 1 }
     ],
-    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Spark ad for ${brandProfile.brand.name}.
+    promptTemplate: (brandProfile, objective, includeEmojis, emojiInstructions) => `You are creating a Spark ad for ${brandProfile.name}.
 
 BRAND VOICE:
 - Personality: ${brandProfile.voice.personality.join(', ')}
@@ -715,7 +689,7 @@ Create a Spark ad with:
 3. Long Headline (MAX 90 characters) - 1 variation
 4. Description (MAX 60 characters) - 1 variation
 5. Long Description (MAX 90 characters) - 1 variation
-6. Business Name (MAX 25 characters) - 1 variation (use actual brand name: ${brandProfile.brand.name})
+6. Business Name (MAX 25 characters) - 1 variation (use actual brand name: ${brandProfile.name})
 
 Return your response as a JSON object with this EXACT structure (no markdown code blocks, just pure JSON):
 {
@@ -742,7 +716,7 @@ Return your response as a JSON object with this EXACT structure (no markdown cod
     },
     {
       "name": "Business Name",
-      "variations": ["${brandProfile.brand.name}"]
+      "variations": ["${brandProfile.name}"]
     }
   ]
 }`

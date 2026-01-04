@@ -8,6 +8,21 @@ binding = "DB"
 database_name = "brand-inspector-db"
 database_id = "c50cdaa6-ea79-481e-aa7a-de5df81c73c4"
 
+# R2 Storage binding for file uploads
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "brand-ai-uploads"
+
+# Cron trigger for cleanup (daily at 3 AM UTC)
+[triggers]
+crons = ["0 3 * * *"]
+
+# Rules for importing non-JS files
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
 # Environment variables
 [vars]
 # ANTHROPIC_API_KEY should be set via `wrangler secret put ANTHROPIC_API_KEY`
